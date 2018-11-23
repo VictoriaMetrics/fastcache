@@ -3,14 +3,14 @@
 [![Go Report](https://goreportcard.com/badge/github.com/VictoriaMetrics/fastcache)](https://goreportcard.com/report/github.com/VictoriaMetrics/fastcache)
 [![codecov](https://codecov.io/gh/VictoriaMetrics/fastcache/branch/master/graph/badge.svg)](https://codecov.io/gh/VictoriaMetrics/fastcache)
 
-# fastcache - fast off-heap thread-safe inmemory cache for Go
+# fastcache - fast thread-safe inmemory cache for big number of entries in Go
 
 ### Features
 
 * Fast. Performance scales on multi-core CPUs. See benchmark results below.
 * Thread-safe. Concurrent goroutines may read and write into a single
   cache instance.
-* The fastcache is designed for storing big number of items without
+* The fastcache is designed for storing big number of entries without
   [GC overhead](https://syslog.ravelin.com/further-dangers-of-large-heaps-in-go-7a267b57d487).
 * Fastcache automatically evicts old entries when reaching the maximum cache size
   set on its creation.
