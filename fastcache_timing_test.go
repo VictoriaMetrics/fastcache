@@ -88,7 +88,7 @@ func BenchmarkBigCacheSetGet(b *testing.B) {
 		b.Fatalf("cannot create cache: %s", err)
 	}
 	b.ReportAllocs()
-	b.SetBytes(items + items/10)
+	b.SetBytes(2 * items)
 	b.RunParallel(func(pb *testing.PB) {
 		k := []byte("\x00\x00\x00\x00")
 		v := []byte("xyza")
@@ -102,7 +102,7 @@ func BenchmarkBigCacheSetGet(b *testing.B) {
 					panic(fmt.Errorf("unexpected error: %s", err))
 				}
 			}
-			for i := 0; i < items/10; i++ {
+			for i := 0; i < items; i++ {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -180,7 +180,7 @@ func BenchmarkCacheSetGet(b *testing.B) {
 	const items = 1 << 16
 	c := New(12 * items)
 	b.ReportAllocs()
-	b.SetBytes(items + items/10)
+	b.SetBytes(2 * items)
 	b.RunParallel(func(pb *testing.PB) {
 		k := []byte("\x00\x00\x00\x00")
 		v := []byte("xyza")
@@ -193,7 +193,7 @@ func BenchmarkCacheSetGet(b *testing.B) {
 				}
 				c.Set(k, v)
 			}
-			for i := 0; i < items/10; i++ {
+			for i := 0; i < items; i++ {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -270,7 +270,7 @@ func BenchmarkStdMapSetGet(b *testing.B) {
 	m := make(map[string][]byte)
 	var mu sync.RWMutex
 	b.ReportAllocs()
-	b.SetBytes(items + items/10)
+	b.SetBytes(2 * items)
 	b.RunParallel(func(pb *testing.PB) {
 		k := []byte("\x00\x00\x00\x00")
 		v := []byte("xyza")
@@ -284,7 +284,7 @@ func BenchmarkStdMapSetGet(b *testing.B) {
 				m[string(k)] = v
 				mu.Unlock()
 			}
-			for i := 0; i < items/10; i++ {
+			for i := 0; i < items; i++ {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
