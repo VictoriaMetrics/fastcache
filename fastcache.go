@@ -50,7 +50,7 @@ type Cache struct {
 // maxBytes must be smaller than the available RAM size for the app,
 // since the cache holds data in memory.
 //
-// If maxBytes is less than 64Mb, then the minimum cache capacity is 64Mb.
+// If maxBytes is less than 16MB, then the minimum cache capacity is 16MB.
 func New(maxBytes int) *Cache {
 	if maxBytes <= 0 {
 		panic(fmt.Errorf("maxBytes must be greater than 0; got %d", maxBytes))
@@ -69,6 +69,8 @@ func New(maxBytes int) *Cache {
 // overflow or due to unlikely hash collision.
 // Pass higher maxBytes value to New if the added items disappear
 // frequently.
+//
+// (k, v) entries with summary size exceeding 64KB aren't stored in the cache.
 //
 // k and v contents may be modified after returning from Set.
 func (c *Cache) Set(k, v []byte) {
@@ -138,11 +140,7 @@ func (b *bucket) Init(maxBytes uint64) {
 	maxChunks := (maxBytes + chunkSize - 1) / chunkSize
 	b.chunks = make([][]byte, maxChunks)
 	b.m = make(map[uint64]uint64)
-	b.idx = 0
-	b.gen = 1
-	b.getCalls = 0
-	b.setCalls = 0
-	b.misses = 0
+	b.Reset()
 }
 
 func (b *bucket) Reset() {
@@ -200,7 +198,8 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 	}
 
 	if len(k) >= (1<<16) || len(v) >= (1<<16) {
-		// Too big key or value
+		// Too big key or value - its length cannot be encoded
+		// with 2 bytes (see below). Skip the entry.
 		return
 	}
 	var kvLenBuf [4]byte
@@ -210,7 +209,8 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 	kvLenBuf[3] = byte(len(v))
 	kvLen := uint64(len(kvLenBuf) + len(k) + len(v))
 	if kvLen >= chunkSize {
-		// Do not store too big keys and values, since they do not fit a 64Kb chunk.
+		// Do not store too big keys and values, since they do not
+		// fit a chunk.
 		return
 	}
 
