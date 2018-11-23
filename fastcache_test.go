@@ -154,7 +154,7 @@ func TestCacheGetSetConcurrent(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
-		case <-time.After(time.Second):
+		case <-time.After(5 * time.Second):
 			t.Fatalf("timeout")
 		}
 	}
