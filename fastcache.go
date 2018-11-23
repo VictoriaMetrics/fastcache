@@ -35,9 +35,10 @@ type Stats struct {
 	BytesSize uint64
 }
 
-// Cache is a fast off-heap thread-safe inmemory cache.
+// Cache is a fast thread-safe inmemory cache optimized for big number
+// of entries.
 //
-// GC performance doesn't depend on the cache size.
+// It has much lower impact on GC comparing to a simple `map[string][]byte`.
 //
 // Use New for creating new cache instance.
 // Concurrent goroutines may call any Cache methods on the same cache instance.
