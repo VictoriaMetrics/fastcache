@@ -81,6 +81,8 @@ func (c *Cache) Set(k, v []byte) {
 
 // Get appends value by the key k to dst and returns the result.
 //
+// Get allocates new byte slice for the returned value if dst is nil.
+//
 // k contents may be modified after returning from Get.
 func (c *Cache) Get(dst, k []byte) []byte {
 	h := xxhash.Sum64(k)
