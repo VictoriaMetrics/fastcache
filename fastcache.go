@@ -186,12 +186,12 @@ func (b *bucket) UpdateStats(s *Stats) {
 	s.Misses += atomic.LoadUint64(&b.misses)
 	s.Collisions += atomic.LoadUint64(&b.collisions)
 
-	b.mu.Lock()
+	b.mu.RLock()
 	s.EntriesCount += uint64(len(b.m))
 	for _, chunk := range b.chunks {
 		s.BytesSize += uint64(cap(chunk))
 	}
-	b.mu.Unlock()
+	b.mu.RUnlock()
 }
 
 func (b *bucket) Set(k, v []byte, h uint64) {
