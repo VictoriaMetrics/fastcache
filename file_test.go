@@ -26,6 +26,7 @@ func TestSaveLoadFile(t *testing.T) {
 	if s.EntriesCount != itemsCount {
 		t.Fatalf("unexpected entriesCount; got %d; want %d", s.EntriesCount, itemsCount)
 	}
+	c.Reset()
 
 	// Verify LoadFromFile
 	c, err := LoadFromFile(filePath)
@@ -45,6 +46,7 @@ func TestSaveLoadFile(t *testing.T) {
 			t.Fatalf("unexpected cache value for k=%q; got %q; want %q; bucket[0]=%#v", k, vv, v, &c.buckets[0])
 		}
 	}
+	c.Reset()
 
 	// Verify LoadFromFileOrNew
 	c = LoadFromFileOrNew(filePath, maxBytes)
@@ -61,6 +63,7 @@ func TestSaveLoadFile(t *testing.T) {
 			t.Fatalf("unexpected cache value for k=%q; got %q; want %q; bucket[0]=%#v", k, vv, v, &c.buckets[0])
 		}
 	}
+	c.Reset()
 
 	// Verify incorrect maxBytes passed to LoadFromFileOrNew
 	c = LoadFromFileOrNew(filePath, maxBytes*10)
@@ -69,10 +72,12 @@ func TestSaveLoadFile(t *testing.T) {
 	if s.EntriesCount != 0 {
 		t.Fatalf("unexpected non-zero entriesCount; got %d", s.EntriesCount)
 	}
+	c.Reset()
 }
 
 func TestSaveLoadConcurrent(t *testing.T) {
 	c := New(1024)
+	defer c.Reset()
 	c.Set([]byte("foo"), []byte("bar"))
 
 	stopCh := make(chan struct{})
@@ -124,6 +129,7 @@ func TestSaveLoadConcurrent(t *testing.T) {
 				if s.EntriesCount == 0 {
 					panic(fmt.Errorf("unexpected empty cache loaded from %q", filePath))
 				}
+				cc.Reset()
 			}
 		}()
 	}

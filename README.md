@@ -18,6 +18,7 @@
 * Simple source code.
 * Cache may be [loaded from file](https://godoc.org/github.com/VictoriaMetrics/fastcache#LoadFromFile)
   and [saved to file](https://godoc.org/github.com/VictoriaMetrics/fastcache#Cache.SaveToFile).
+* Works on [Google AppEngine](https://cloud.google.com/appengine/docs/go/).
 
 
 ### Benchmarks
@@ -30,18 +31,21 @@ GOMAXPROCS=4 go test github.com/VictoriaMetrics/fastcache -bench=. -benchtime=10
 goos: linux
 goarch: amd64
 pkg: github.com/VictoriaMetrics/fastcache
-BenchmarkBigCacheSet-4      	    2000	  10453432 ns/op	   6.27 MB/s	 4660370 B/op	       6 allocs/op
-BenchmarkBigCacheGet-4      	    2000	   6895245 ns/op	   9.50 MB/s	  684169 B/op	  131076 allocs/op
-BenchmarkBigCacheSetGet-4   	    1000	  17727888 ns/op	   7.39 MB/s	 5046744 B/op	  131083 allocs/op
-BenchmarkCacheSet-4         	    5000	   3834836 ns/op	  17.09 MB/s	    4475 B/op	       1 allocs/op
-BenchmarkCacheGet-4         	    5000	   2717554 ns/op	  24.12 MB/s	    4475 B/op	       1 allocs/op
-BenchmarkCacheSetGet-4      	    2000	   9539259 ns/op	  13.74 MB/s	   11184 B/op	       4 allocs/op
-BenchmarkStdMapSet-4        	    2000	  10884689 ns/op	   6.02 MB/s	  268420 B/op	   65537 allocs/op
-BenchmarkStdMapGet-4        	    5000	   2876776 ns/op	  22.78 MB/s	    2562 B/op	      13 allocs/op
-BenchmarkStdMapSetGet-4     	     100	 145813988 ns/op	   0.90 MB/s	  387622 B/op	   65559 allocs/op
-BenchmarkSyncMapSet-4       	     500	  26929875 ns/op	   2.43 MB/s	 3426533 B/op	  262411 allocs/op
-BenchmarkSyncMapGet-4       	    5000	   2442143 ns/op	  26.84 MB/s	    2544 B/op	      79 allocs/op
-BenchmarkSyncMapSetGet-4    	    1000	  15241377 ns/op	   8.60 MB/s	 3417191 B/op	  262277 allocs/op
+
+BenchmarkBigCacheSet-4      	    2000	  10937855 ns/op	   5.99 MB/s	 4660369 B/op	       6 allocs/op
+BenchmarkBigCacheGet-4      	    2000	   6985426 ns/op	   9.38 MB/s	  684169 B/op	  131076 allocs/op
+BenchmarkBigCacheSetGet-4   	    1000	  17301294 ns/op	   7.58 MB/s	 5046746 B/op	  131083 allocs/op
+BenchmarkCacheSet-4         	    5000	   3975946 ns/op	  16.48 MB/s	    1142 B/op	       2 allocs/op
+BenchmarkCacheGet-4         	    5000	   3572679 ns/op	  18.34 MB/s	    1141 B/op	       2 allocs/op
+BenchmarkCacheSetGet-4      	    2000	   9337256 ns/op	  14.04 MB/s	    2856 B/op	       5 allocs/op
+BenchmarkStdMapSet-4        	    2000	  14684273 ns/op	   4.46 MB/s	  268423 B/op	   65537 allocs/op
+BenchmarkStdMapGet-4        	    5000	   2833647 ns/op	  23.13 MB/s	    2561 B/op	      13 allocs/op
+BenchmarkStdMapSetGet-4     	     100	 137417861 ns/op	   0.95 MB/s	  387356 B/op	   65558 allocs/op
+BenchmarkSyncMapSet-4       	    1000	  23300189 ns/op	   2.81 MB/s	 3417183 B/op	  262277 allocs/op
+BenchmarkSyncMapGet-4       	    5000	   2316508 ns/op	  28.29 MB/s	    2543 B/op	      79 allocs/op
+BenchmarkSyncMapSetGet-4    	    2000	  10444529 ns/op	  12.55 MB/s	 3412527 B/op	  262210 allocs/op
+BenchmarkSaveToFile-4       	      50	 259800249 ns/op	 129.15 MB/s	55739129 B/op	    3091 allocs/op
+BenchmarkLoadFromFile-4     	     100	 121189395 ns/op	 276.88 MB/s	98089036 B/op	    8748 allocs/op
 ```
 
 `MB/s` column here actually means `millions of operations per second`.
@@ -77,6 +81,8 @@ The cache uses ideas from [BigCache](https://github.com/allegro/bigcache):
 
 64KB-sized chunks reduce memory fragmentation and the total memory usage comparing
 to a single big chunk per bucket.
+Chunks are allocated off-heap if possible. This reduces total memory usage because
+GC collects unused memory more frequently without the need in `GOGC` tweaking.
 
 
 ### Users

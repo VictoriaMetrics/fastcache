@@ -8,7 +8,7 @@ import (
 	"github.com/cespare/xxhash"
 )
 
-const bucketsCount = 256
+const bucketsCount = 512
 
 const chunkSize = 64 * 1024
 
@@ -40,8 +40,11 @@ type Stats struct {
 //
 // It has much lower impact on GC comparing to a simple `map[string][]byte`.
 //
-// Use New for creating new cache instance.
+// Use New or LoadFromFile* for creating new cache instance.
 // Concurrent goroutines may call any Cache methods on the same cache instance.
+//
+// Call Reset when the cache is no longer needed. This reclaims the allocated
+// memory.
 type Cache struct {
 	buckets [bucketsCount]bucket
 }
@@ -150,7 +153,8 @@ func (b *bucket) Reset() {
 	b.mu.Lock()
 	chunks := b.chunks
 	for i := range chunks {
-		chunks[i] = chunks[i][:0]
+		putChunk(chunks[i])
+		chunks[i] = nil
 	}
 	bm := b.m
 	for k := range bm {
@@ -240,7 +244,8 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 	}
 	chunk := b.chunks[chunkIdx]
 	if chunk == nil {
-		chunk = make([]byte, 0, chunkSize)
+		chunk = getChunk()
+		chunk = chunk[:0]
 	}
 	chunk = append(chunk, kvLenBuf[:]...)
 	chunk = append(chunk, k...)

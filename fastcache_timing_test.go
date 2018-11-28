@@ -18,6 +18,7 @@ func BenchmarkBigCacheSet(b *testing.B) {
 	if err != nil {
 		b.Fatalf("cannot create cache: %s", err)
 	}
+	defer c.Close()
 	b.ReportAllocs()
 	b.SetBytes(items)
 	b.RunParallel(func(pb *testing.PB) {
@@ -45,6 +46,7 @@ func BenchmarkBigCacheGet(b *testing.B) {
 	if err != nil {
 		b.Fatalf("cannot create cache: %s", err)
 	}
+	defer c.Close()
 	k := []byte("\x00\x00\x00\x00")
 	v := []byte("xyza")
 	for i := 0; i < items; i++ {
@@ -87,6 +89,7 @@ func BenchmarkBigCacheSetGet(b *testing.B) {
 	if err != nil {
 		b.Fatalf("cannot create cache: %s", err)
 	}
+	defer c.Close()
 	b.ReportAllocs()
 	b.SetBytes(2 * items)
 	b.RunParallel(func(pb *testing.PB) {
@@ -126,6 +129,7 @@ func b2s(b []byte) string {
 func BenchmarkCacheSet(b *testing.B) {
 	const items = 1 << 16
 	c := New(12 * items)
+	defer c.Reset()
 	b.ReportAllocs()
 	b.SetBytes(items)
 	b.RunParallel(func(pb *testing.PB) {
@@ -146,6 +150,7 @@ func BenchmarkCacheSet(b *testing.B) {
 func BenchmarkCacheGet(b *testing.B) {
 	const items = 1 << 16
 	c := New(12 * items)
+	defer c.Reset()
 	k := []byte("\x00\x00\x00\x00")
 	v := []byte("xyza")
 	for i := 0; i < items; i++ {
@@ -179,6 +184,7 @@ func BenchmarkCacheGet(b *testing.B) {
 func BenchmarkCacheSetGet(b *testing.B) {
 	const items = 1 << 16
 	c := New(12 * items)
+	defer c.Reset()
 	b.ReportAllocs()
 	b.SetBytes(2 * items)
 	b.RunParallel(func(pb *testing.PB) {
