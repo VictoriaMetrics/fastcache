@@ -16,6 +16,8 @@
   set on its creation.
 * [Simple API](http://godoc.org/github.com/VictoriaMetrics/fastcache).
 * Simple source code.
+* Cache may be [loaded from file](https://godoc.org/github.com/VictoriaMetrics/fastcache#LoadFromFile)
+  and [saved to file](https://godoc.org/github.com/VictoriaMetrics/fastcache#Cache.SaveToFile).
 
 
 ### Benchmarks
