@@ -207,6 +207,9 @@ func (b *bucket) Load(r io.Reader, maxChunks uint64) error {
 	}
 
 	b.mu.Lock()
+	for _, chunk := range b.chunks {
+		putChunk(chunk)
+	}
 	b.chunks = chunks
 	b.m = m
 	b.idx = bIdx
