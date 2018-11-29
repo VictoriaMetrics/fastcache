@@ -199,7 +199,7 @@ func (b *bucket) Load(r io.Reader, maxChunks uint64) error {
 		return fmt.Errorf("chunksLen=%d cannot exceed maxChunks=%d", chunksLen, maxChunks)
 	}
 	for chunkIdx := uint64(0); chunkIdx < chunksLen; chunkIdx++ {
-		chunk := make([]byte, chunkSize)
+		chunk := getChunk()
 		if _, err := io.ReadFull(r, chunk); err != nil {
 			return fmt.Errorf("cannot read b.chunks[%d]: %s", chunkIdx, err)
 		}
