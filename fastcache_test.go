@@ -227,6 +227,14 @@ func TestCacheKeys(t *testing.T) {
 			t.Fatalf("failed to retrievs keys by pattern: \"%s\"", tt.Pattern)
 		}
 	}
+
+	result, err := c.Keys("*")
+	if result != nil {
+		t.Fatal("expected no matches")
+	}
+	if err == nil {
+		t.Fatal("expected regex error")
+	}
 }
 
 func testCacheGetSet(c *Cache, itemsCount int) error {
