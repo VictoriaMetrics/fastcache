@@ -12,7 +12,9 @@ const bucketsCount = 512
 
 const chunkSize = 64 * 1024
 
-const maxBucketSize uint64 = 1 << 40
+const bucketSizeBits = 40
+
+const maxBucketSize uint64 = 1 << bucketSizeBits
 
 // Stats represents cache stats.
 //
@@ -176,8 +178,8 @@ func (b *bucket) Clean() {
 	bIdx := b.idx
 	bm := b.m
 	for k, v := range bm {
-		gen := v >> 40
-		idx := v & ((1 << 40) - 1)
+		gen := v >> bucketSizeBits
+		idx := v & ((1 << bucketSizeBits) - 1)
 		if gen == bGen && idx < bIdx || gen+1 == bGen && idx >= bIdx {
 			continue
 		}
@@ -253,7 +255,7 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 	chunk = append(chunk, k...)
 	chunk = append(chunk, v...)
 	b.chunks[chunkIdx] = chunk
-	b.m[h] = idx | (b.gen << 40)
+	b.m[h] = idx | (b.gen << bucketSizeBits)
 	b.idx = idxNew
 	b.mu.Unlock()
 }
@@ -264,8 +266,8 @@ func (b *bucket) Get(dst, k []byte, h uint64) []byte {
 	b.mu.RLock()
 	v := b.m[h]
 	if v > 0 {
-		gen := v >> 40
-		idx := v & ((1 << 40) - 1)
+		gen := v >> bucketSizeBits
+		idx := v & ((1 << bucketSizeBits) - 1)
 		if gen == b.gen && idx < b.idx || gen+1 == b.gen && idx >= b.idx {
 			chunkIdx := idx / chunkSize
 			idx %= chunkSize
