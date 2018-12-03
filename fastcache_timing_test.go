@@ -387,3 +387,36 @@ func BenchmarkSyncMapSetGet(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkCache_Keys(b *testing.B) {
+	keys := []string{
+		"username",
+		"firstname",
+		"lastname",
+	}
+	pattern := "name$"
+
+	items := 100 * len(keys)
+
+	c := New(items)
+	defer c.Reset()
+
+	b.ReportAllocs()
+	b.SetBytes(int64(items))
+
+	for _, k := range keys {
+		c.Set([]byte(k), nil)
+	}
+
+	for n := 0; n < b.N; n++ {
+		keys, err := c.Keys(pattern)
+
+		if err != nil {
+			panic(fmt.Errorf("BUG: error for valid pattern \"%s\" (%s)", pattern, err))
+		}
+
+		if len(keys) == 0 {
+			panic(fmt.Errorf("BUG: no key for valid pattern \"%s\"", pattern))
+		}
+	}
+}

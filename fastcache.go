@@ -2,6 +2,7 @@ package fastcache
 
 import (
 	"fmt"
+	"regexp"
 	"sync"
 	"sync/atomic"
 
@@ -184,6 +185,26 @@ func (c *Cache) UpdateStats(s *Stats) {
 	s.InvalidMetavalueErrors += atomic.LoadUint64(&c.bigStats.InvalidMetavalueErrors)
 	s.InvalidValueLenErrors += atomic.LoadUint64(&c.bigStats.InvalidValueLenErrors)
 	s.InvalidValueHashErrors += atomic.LoadUint64(&c.bigStats.InvalidValueHashErrors)
+}
+
+// Keys retrieves all cached keys matching regex pattern
+func (c *Cache) Keys(pattern string) (keys [][]byte, err error) {
+	r, err := regexp.Compile(pattern)
+	if err != nil {
+		return
+	}
+
+	for _, b := range c.buckets {
+		for _, chunk := range b.chunks {
+			if len(chunk) > 0 {
+				if key := chunk[4 : 4+chunk[1]]; r.Match(key) {
+					keys = append(keys, key)
+				}
+			}
+		}
+	}
+
+	return
 }
 
 type bucket struct {

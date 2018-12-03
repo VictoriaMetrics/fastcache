@@ -168,6 +168,67 @@ func TestCacheGetSetConcurrent(t *testing.T) {
 	}
 }
 
+func TestCacheKeys(t *testing.T) {
+	keys := []string{
+		"username",
+		"firstname",
+		"lastname",
+	}
+
+	c := New(100 * len(keys))
+	defer c.Reset()
+
+	for _, k := range keys {
+		c.Set([]byte(k), nil)
+	}
+
+	tests := []struct {
+		Pattern  string
+		Expected []string
+	}{
+		{
+			Pattern:  "",
+			Expected: keys,
+		},
+		{
+			Pattern:  "name$",
+			Expected: keys,
+		},
+		{
+			Pattern: "st",
+			Expected: []string{
+				"firstname",
+				"lastname",
+			},
+		},
+		{
+			Pattern:  " ",
+			Expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		result, err := c.Keys(tt.Pattern)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		count := 0
+		for _, r := range result {
+			for _, e := range tt.Expected {
+				if string(r) == e {
+					count++
+					break
+				}
+			}
+		}
+
+		if count != len(tt.Expected) {
+			t.Fatalf("failed to retrievs keys by pattern: \"%s\"", tt.Pattern)
+		}
+	}
+}
+
 func testCacheGetSet(c *Cache, itemsCount int) error {
 	for i := 0; i < itemsCount; i++ {
 		k := []byte(fmt.Sprintf("key %d", i))
