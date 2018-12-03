@@ -187,8 +187,8 @@ func (b *bucket) Load(r io.Reader, maxChunks uint64) error {
 	}
 
 	maxBytes := maxChunks * chunkSize
-	if maxBytes >= (1 << 40) {
-		return fmt.Errorf("too big maxBytes=%d; should be smaller than %d", maxBytes, 1<<40)
+	if maxBytes >= maxBucketSize {
+		return fmt.Errorf("too big maxBytes=%d; should be smaller than %d", maxBytes, maxBucketSize)
 	}
 	chunks := make([][]byte, maxChunks)
 	chunksLen, err := readUint64(r)

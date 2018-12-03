@@ -12,6 +12,8 @@ const bucketsCount = 512
 
 const chunkSize = 64 * 1024
 
+const maxBucketSize uint64 = 1 << 40
+
 // Stats represents cache stats.
 //
 // Use Cache.UpdateStats for obtaining fresh stats from the cache.
@@ -140,8 +142,8 @@ type bucket struct {
 }
 
 func (b *bucket) Init(maxBytes uint64) {
-	if maxBytes >= (1 << 40) {
-		panic(fmt.Errorf("too big maxBytes=%d; should be smaller than %d", maxBytes, 1<<40))
+	if maxBytes >= maxBucketSize {
+		panic(fmt.Errorf("too big maxBytes=%d; should be smaller than %d", maxBytes, maxBucketSize))
 	}
 	maxChunks := (maxBytes + chunkSize - 1) / chunkSize
 	b.chunks = make([][]byte, maxChunks)
