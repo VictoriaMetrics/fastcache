@@ -56,7 +56,7 @@ type Cache struct {
 // maxBytes must be smaller than the available RAM size for the app,
 // since the cache holds data in memory.
 //
-// If maxBytes is less than 16MB, then the minimum cache capacity is 16MB.
+// If maxBytes is less than 32MB, then the minimum cache capacity is 32MB.
 func New(maxBytes int) *Cache {
 	if maxBytes <= 0 {
 		panic(fmt.Errorf("maxBytes must be greater than 0; got %d", maxBytes))
