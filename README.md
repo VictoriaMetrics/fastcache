@@ -16,8 +16,8 @@
   set on its creation.
 * [Simple API](http://godoc.org/github.com/VictoriaMetrics/fastcache).
 * Simple source code.
-* Cache may be [loaded from file](https://godoc.org/github.com/VictoriaMetrics/fastcache#LoadFromFile)
-  and [saved to file](https://godoc.org/github.com/VictoriaMetrics/fastcache#Cache.SaveToFile).
+* Cache may be [saved to file](https://godoc.org/github.com/VictoriaMetrics/fastcache#Cache.SaveToFile)
+  and [loaded from file](https://godoc.org/github.com/VictoriaMetrics/fastcache#LoadFromFile).
 * Works on [Google AppEngine](https://cloud.google.com/appengine/docs/go/).
 
 
@@ -27,7 +27,7 @@
 and [sync.Map](https://golang.org/pkg/sync/#Map).
 
 ```
-GOMAXPROCS=4 go test github.com/VictoriaMetrics/fastcache -bench=. -benchtime=10s
+GOMAXPROCS=4 go test github.com/VictoriaMetrics/fastcache -bench='Set|Get' -benchtime=10s
 goos: linux
 goarch: amd64
 pkg: github.com/VictoriaMetrics/fastcache
@@ -44,8 +44,6 @@ BenchmarkStdMapSetGet-4     	     100	 137417861 ns/op	   0.95 MB/s	  387356 B/o
 BenchmarkSyncMapSet-4       	    1000	  23300189 ns/op	   2.81 MB/s	 3417183 B/op	  262277 allocs/op
 BenchmarkSyncMapGet-4       	    5000	   2316508 ns/op	  28.29 MB/s	    2543 B/op	      79 allocs/op
 BenchmarkSyncMapSetGet-4    	    2000	  10444529 ns/op	  12.55 MB/s	 3412527 B/op	  262210 allocs/op
-BenchmarkSaveToFile-4       	      50	 259800249 ns/op	 129.15 MB/s	55739129 B/op	    3091 allocs/op
-BenchmarkLoadFromFile-4     	     100	 121189395 ns/op	 276.88 MB/s	98089036 B/op	    8748 allocs/op
 ```
 
 `MB/s` column here actually means `millions of operations per second`.

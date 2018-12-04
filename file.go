@@ -1,81 +1,134 @@
 package fastcache
 
 import (
-	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
 
 	"github.com/golang/snappy"
 )
 
-// SaveToFile atomically saves cache data to the given filePath.
+// SaveToFile atomically saves cache data to the given filePath using a single
+// CPU core.
 //
 // SaveToFile may be called concurrently with other operations on the cache.
+//
+// The saved data may be loaded with LoadFromFile*.
+//
+// See also SaveToFileConcurrent for faster saving to file.
 func (c *Cache) SaveToFile(filePath string) error {
-	dir := filepath.Dir(filePath)
-	tmpFile, err := ioutil.TempFile(dir, "fastcache.*.tmp")
-	if err != nil {
-		return fmt.Errorf("cannot create temporary file for cache data: %s", err)
-	}
-	tmpFilePath := tmpFile.Name()
-	if err := c.save(tmpFile); err != nil {
-		_ = tmpFile.Close()
-		_ = os.Remove(tmpFilePath)
-		return fmt.Errorf("cannot save cache data to temporary file: %s", err)
-	}
-	if err := tmpFile.Close(); err != nil {
-		_ = os.Remove(tmpFilePath)
-		return fmt.Errorf("cannot close temporary file %s: %s", tmpFilePath, err)
-	}
-	if err := os.Rename(tmpFilePath, filePath); err != nil {
-		_ = os.Remove(tmpFilePath)
-		return fmt.Errorf("cannot move temporary file %s to %s: %s", tmpFilePath, filePath, err)
-	}
-	return nil
+	return c.SaveToFileConcurrent(filePath, 1)
 }
 
-func (c *Cache) save(w io.Writer) error {
-	bw := bufio.NewWriterSize(w, 1024*1024)
-	zw := snappy.NewBufferedWriter(bw)
-	maxBucketChunks := uint64(cap(c.buckets[0].chunks))
-	if err := writeUint64(zw, maxBucketChunks); err != nil {
-		return fmt.Errorf("cannot write maxBucketBytes=%d: %s", maxBucketChunks, err)
-	}
-	for i := range c.buckets[:] {
-		if err := c.buckets[i].Save(zw); err != nil {
-			return err
+// SaveToFileConcurrent saves cache data to the given filePath using concurrency
+// CPU cores.
+//
+// SaveToFileConcurrent may be called concurrently with other operations
+// on the cache.
+//
+// The saved data may be loaded with LoadFromFile*.
+//
+// See also SaveToFile.
+func (c *Cache) SaveToFileConcurrent(filePath string, concurrency int) error {
+	// Create dir if it doesn't exist.
+	dir := filepath.Dir(filePath)
+	if _, err := os.Stat(dir); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("cannot stat %q: %s", dir, err)
+		}
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("cannot create dir %q: %s", dir, err)
 		}
 	}
-	if err := zw.Close(); err != nil {
-		return fmt.Errorf("cannot close snappy.Writer: %s", err)
+
+	// Save cache data into a temporary directory.
+	tmpDir, err := ioutil.TempDir(dir, "fastcache.tmp.")
+	if err != nil {
+		return fmt.Errorf("cannot create temporary dir inside %q: %s", dir, err)
 	}
-	if err := bw.Flush(); err != nil {
-		return fmt.Errorf("cannot flush bufio.Writer: %s", err)
+	defer func() {
+		if tmpDir != "" {
+			_ = os.RemoveAll(tmpDir)
+		}
+	}()
+	gomaxprocs := runtime.GOMAXPROCS(-1)
+	if concurrency <= 0 || concurrency > gomaxprocs {
+		concurrency = gomaxprocs
 	}
+	if err := c.save(tmpDir, concurrency); err != nil {
+		return fmt.Errorf("cannot save cache data to temporary dir %q: %s", tmpDir, err)
+	}
+
+	// Remove old filePath contents, since os.Rename may return
+	// error if filePath dir exists.
+	if err := os.RemoveAll(filePath); err != nil {
+		return fmt.Errorf("cannot remove old contents at %q: %s", filePath, err)
+	}
+	if err := os.Rename(tmpDir, filePath); err != nil {
+		return fmt.Errorf("cannot move temporary dir %q to %q: %s", tmpDir, filePath, err)
+	}
+	tmpDir = ""
 	return nil
 }
 
 // LoadFromFile loads cache data from the given filePath.
+//
+// See SaveToFile* for saving cache data to file.
 func LoadFromFile(filePath string) (*Cache, error) {
-	return loadFromFile(filePath, 0)
+	return load(filePath, 0)
 }
 
-func loadFromFile(filePath string, maxBytes int) (*Cache, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("cannot open %s: %s", filePath, err)
+// LoadFromFileOrNew tries loading cache data from the given filePath.
+//
+// The function falls back to creating new cache with the given maxBytes
+// capacity if error occurs during loading the cache from file.
+func LoadFromFileOrNew(filePath string, maxBytes int) *Cache {
+	c, err := load(filePath, maxBytes)
+	if err == nil {
+		return c
 	}
-	defer file.Close()
+	return New(maxBytes)
+}
 
-	br := bufio.NewReaderSize(file, 1024*1024)
-	zr := snappy.NewReader(br)
-	maxBucketChunks, err := readUint64(zr)
+func (c *Cache) save(dir string, workersCount int) error {
+	if err := saveMetadata(c, dir); err != nil {
+		return err
+	}
+
+	// Save buckets by workersCount concurrent workers.
+	workCh := make(chan int, workersCount)
+	results := make(chan error)
+	for i := 0; i < workersCount; i++ {
+		go func(workerNum int) {
+			results <- saveBuckets(c.buckets[:], workCh, dir, workerNum)
+		}(i)
+	}
+	// Feed workers with work
+	for i := range c.buckets[:] {
+		workCh <- i
+	}
+	close(workCh)
+
+	// Read results.
+	var err error
+	for i := 0; i < workersCount; i++ {
+		result := <-results
+		if result != nil && err != nil {
+			err = result
+		}
+	}
+	return err
+}
+
+func load(filePath string, maxBytes int) (*Cache, error) {
+	maxBucketChunks, err := loadMetadata(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read maxBucketChunks: %s", err)
+		return nil, err
 	}
 	if maxBytes > 0 {
 		maxBucketBytes := uint64((maxBytes + bucketsCount - 1) / bucketsCount)
@@ -84,25 +137,125 @@ func loadFromFile(filePath string, maxBytes int) (*Cache, error) {
 			return nil, fmt.Errorf("cache file %s contains maxBytes=%d; want %d", filePath, maxBytes, expectedBucketChunks*chunkSize*bucketsCount)
 		}
 	}
+
+	// Read bucket files from filePath dir.
+	d, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot open %q: %s", filePath, err)
+	}
+	defer func() {
+		_ = d.Close()
+	}()
+	fis, err := d.Readdir(-1)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read files from %q: %s", filePath, err)
+	}
+	results := make(chan error)
+	workersCount := 0
 	var c Cache
-	for i := range c.buckets[:] {
-		if err := c.buckets[i].Load(zr, maxBucketChunks); err != nil {
-			return nil, err
+	for _, fi := range fis {
+		fn := fi.Name()
+		if fi.IsDir() || !dataFileRegexp.MatchString(fn) {
+			continue
 		}
+		workersCount++
+		go func(dataPath string) {
+			results <- loadBuckets(c.buckets[:], dataPath, maxBucketChunks)
+		}(filePath + "/" + fn)
+	}
+	err = nil
+	for i := 0; i < workersCount; i++ {
+		result := <-results
+		if result != nil && err == nil {
+			err = result
+		}
+	}
+	if err != nil {
+		return nil, err
 	}
 	return &c, nil
 }
 
-// LoadFromFileOrNew tries loading cache data from the given filePath.
-//
-// The function falls back to creating new cache with the given maxBytes
-// capacity if error occurs during loading the cache from file.
-func LoadFromFileOrNew(filePath string, maxBytes int) *Cache {
-	c, err := loadFromFile(filePath, maxBytes)
-	if err == nil {
-		return c
+func saveMetadata(c *Cache, dir string) error {
+	metadataPath := dir + "/metadata.bin"
+	metadataFile, err := os.Create(metadataPath)
+	if err != nil {
+		return fmt.Errorf("cannot create %q: %s", metadataPath, err)
 	}
-	return New(maxBytes)
+	defer func() {
+		_ = metadataFile.Close()
+	}()
+	maxBucketChunks := uint64(cap(c.buckets[0].chunks))
+	if err := writeUint64(metadataFile, maxBucketChunks); err != nil {
+		return fmt.Errorf("cannot write maxBucketChunks=%d to %q: %s", maxBucketChunks, metadataPath, err)
+	}
+	return nil
+}
+
+func loadMetadata(dir string) (uint64, error) {
+	metadataPath := dir + "/metadata.bin"
+	metadataFile, err := os.Open(metadataPath)
+	if err != nil {
+		return 0, fmt.Errorf("cannot open %q: %s", metadataPath, err)
+	}
+	defer func() {
+		_ = metadataFile.Close()
+	}()
+	maxBucketChunks, err := readUint64(metadataFile)
+	if err != nil {
+		return 0, fmt.Errorf("cannot read maxBucketChunks from %q: %s", metadataPath, err)
+	}
+	return maxBucketChunks, nil
+}
+
+var dataFileRegexp = regexp.MustCompile(`^data\.\d+\.bin$`)
+
+func saveBuckets(buckets []bucket, workCh <-chan int, dir string, workerNum int) error {
+	dataPath := fmt.Sprintf("%s/data.%d.bin", dir, workerNum)
+	dataFile, err := os.Create(dataPath)
+	if err != nil {
+		return fmt.Errorf("cannot create %q: %s", dataPath, err)
+	}
+	defer func() {
+		_ = dataFile.Close()
+	}()
+	zw := snappy.NewBufferedWriter(dataFile)
+	for bucketNum := range workCh {
+		if err := writeUint64(zw, uint64(bucketNum)); err != nil {
+			return fmt.Errorf("cannot write bucketNum=%d to %q: %s", bucketNum, dataPath, err)
+		}
+		if err := buckets[bucketNum].Save(zw); err != nil {
+			return fmt.Errorf("cannot save bucket[%d] to %q: %s", bucketNum, dataPath, err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		return fmt.Errorf("cannot close snappy.Writer for %q: %s", dataPath, err)
+	}
+	return nil
+}
+
+func loadBuckets(buckets []bucket, dataPath string, maxChunks uint64) error {
+	dataFile, err := os.Open(dataPath)
+	if err != nil {
+		return fmt.Errorf("cannot open %q: %s", dataPath, err)
+	}
+	defer func() {
+		_ = dataFile.Close()
+	}()
+	zr := snappy.NewReader(dataFile)
+	for {
+		bucketNum, err := readUint64(zr)
+		if err == io.EOF {
+			// Reached the end of file.
+			return nil
+		}
+		if bucketNum >= uint64(len(buckets)) {
+			return fmt.Errorf("unexpected bucketNum read from %q: %d; must be smaller than %d", dataPath, bucketNum, len(buckets))
+		}
+		if err := buckets[bucketNum].Load(zr, maxChunks); err != nil {
+			return fmt.Errorf("cannot load bucket[%d] from %q: %s", bucketNum, dataPath, err)
+		}
+	}
 }
 
 func (b *bucket) Save(w io.Writer) error {

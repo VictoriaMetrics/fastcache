@@ -8,26 +8,42 @@ import (
 )
 
 func BenchmarkSaveToFile(b *testing.B) {
-	const filePath = "BencharkSaveToFile.fastcache"
-	defer os.Remove(filePath)
+	for _, concurrency := range []int{1, 2, 4, 8, 16} {
+		b.Run(fmt.Sprintf("concurrency_%d", concurrency), func(b *testing.B) {
+			benchmarkSaveToFile(b, concurrency)
+		})
+	}
+}
+
+func benchmarkSaveToFile(b *testing.B, concurrency int) {
+	filePath := fmt.Sprintf("BencharkSaveToFile.%d.fastcache", concurrency)
+	defer os.RemoveAll(filePath)
 	c := newBenchCache()
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	b.SetBytes(benchCacheSize)
 	for i := 0; i < b.N; i++ {
-		if err := c.SaveToFile(filePath); err != nil {
+		if err := c.SaveToFileConcurrent(filePath, concurrency); err != nil {
 			b.Fatalf("unexpected error when saving to file: %s", err)
 		}
 	}
 }
 
 func BenchmarkLoadFromFile(b *testing.B) {
-	const filePath = "BenchmarkLoadFromFile.fastcache"
-	defer os.Remove(filePath)
+	for _, concurrency := range []int{1, 2, 4, 8, 16} {
+		b.Run(fmt.Sprintf("concurrency_%d", concurrency), func(b *testing.B) {
+			benchmarkLoadFromFile(b, concurrency)
+		})
+	}
+}
+
+func benchmarkLoadFromFile(b *testing.B, concurrency int) {
+	filePath := fmt.Sprintf("BenchmarkLoadFromFile.%d.fastcache", concurrency)
+	defer os.RemoveAll(filePath)
 
 	c := newBenchCache()
-	if err := c.SaveToFile(filePath); err != nil {
+	if err := c.SaveToFileConcurrent(filePath, concurrency); err != nil {
 		b.Fatalf("cannot save cache to file: %s", err)
 	}
 

@@ -8,9 +8,17 @@ import (
 )
 
 func TestSaveLoadFile(t *testing.T) {
+	for _, concurrency := range []int{0, 1, 2, 4, 10} {
+		t.Run(fmt.Sprintf("concurrency_%d", concurrency), func(t *testing.T) {
+			testSaveLoadFile(t, concurrency)
+		})
+	}
+}
+
+func testSaveLoadFile(t *testing.T, concurrency int) {
 	var s Stats
-	const filePath = "TestSaveLoadFile.fastcache"
-	defer os.Remove(filePath)
+	filePath := fmt.Sprintf("TestSaveLoadFile.%d.fastcache", concurrency)
+	defer os.RemoveAll(filePath)
 
 	const itemsCount = 10000
 	const maxBytes = bucketsCount * chunkSize * 2
@@ -20,7 +28,15 @@ func TestSaveLoadFile(t *testing.T) {
 		v := []byte(fmt.Sprintf("value %d", i))
 		c.Set(k, v)
 	}
-	c.SaveToFile(filePath)
+	if concurrency == 1 {
+		if err := c.SaveToFile(filePath); err != nil {
+			t.Fatalf("SaveToFile error: %s", err)
+		}
+	} else {
+		if err := c.SaveToFileConcurrent(filePath, concurrency); err != nil {
+			t.Fatalf("SaveToFileConcurrent(%d) error: %s", concurrency, err)
+		}
+	}
 	s = Stats{}
 	c.UpdateStats(&s)
 	if s.EntriesCount != itemsCount {
@@ -115,9 +131,9 @@ func TestSaveLoadConcurrent(t *testing.T) {
 		filePath := fmt.Sprintf("TestSaveToFileConcurrent.%d.fastcache", i)
 		go func() {
 			defer wgSavers.Done()
-			defer os.Remove(filePath)
+			defer os.RemoveAll(filePath)
 			for j := 0; j < 3; j++ {
-				if err := c.SaveToFile(filePath); err != nil {
+				if err := c.SaveToFileConcurrent(filePath, 3); err != nil {
 					panic(fmt.Errorf("cannot save cache to %q: %s", filePath, err))
 				}
 				cc, err := LoadFromFile(filePath)
