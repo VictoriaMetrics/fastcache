@@ -39,6 +39,11 @@ type Stats struct {
 	BytesSize uint64
 }
 
+// Reset resets s, so it may be re-used again in Cache.UpdateStats.
+func (s *Stats) Reset() {
+	*s = Stats{}
+}
+
 // Cache is a fast thread-safe inmemory cache optimized for big number
 // of entries.
 //
@@ -115,6 +120,8 @@ func (c *Cache) Reset() {
 }
 
 // UpdateStats adds cache stats to s.
+//
+// Call s.Reset before calling UpdateStats if s is re-used.
 func (c *Cache) UpdateStats(s *Stats) {
 	for i := range c.buckets[:] {
 		c.buckets[i].UpdateStats(s)

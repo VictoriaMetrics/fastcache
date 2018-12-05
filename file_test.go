@@ -37,7 +37,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 			t.Fatalf("SaveToFileConcurrent(%d) error: %s", concurrency, err)
 		}
 	}
-	s = Stats{}
+	s.Reset()
 	c.UpdateStats(&s)
 	if s.EntriesCount != itemsCount {
 		t.Fatalf("unexpected entriesCount; got %d; want %d", s.EntriesCount, itemsCount)
@@ -49,7 +49,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	s = Stats{}
+	s.Reset()
 	c.UpdateStats(&s)
 	if s.EntriesCount != itemsCount {
 		t.Fatalf("unexpected entriesCount; got %d; want %d", s.EntriesCount, itemsCount)
@@ -66,7 +66,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 
 	// Verify LoadFromFileOrNew
 	c = LoadFromFileOrNew(filePath, maxBytes)
-	s = Stats{}
+	s.Reset()
 	c.UpdateStats(&s)
 	if s.EntriesCount != itemsCount {
 		t.Fatalf("unexpected entriesCount; got %d; want %d", s.EntriesCount, itemsCount)
@@ -83,7 +83,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 
 	// Verify incorrect maxBytes passed to LoadFromFileOrNew
 	c = LoadFromFileOrNew(filePath, maxBytes*10)
-	s = Stats{}
+	s.Reset()
 	c.UpdateStats(&s)
 	if s.EntriesCount != 0 {
 		t.Fatalf("unexpected non-zero entriesCount; got %d", s.EntriesCount)
