@@ -261,8 +261,11 @@ func loadBuckets(buckets []bucket, dataPath string, maxChunks uint64) error {
 func (b *bucket) Save(w io.Writer) error {
 	b.Clean()
 
-	// Store b.idx, b.gen and b.m to w.
 	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	// Store b.idx, b.gen and b.m to w.
+
 	bIdx := b.idx
 	bGen := b.gen
 	chunksLen := 0
@@ -280,7 +283,6 @@ func (b *bucket) Save(w io.Writer) error {
 		binary.LittleEndian.PutUint64(u64Buf[:], v)
 		kvs = append(kvs, u64Buf[:]...)
 	}
-	b.mu.RUnlock()
 
 	if err := writeUint64(w, bIdx); err != nil {
 		return fmt.Errorf("cannot write b.idx: %s", err)
@@ -299,11 +301,8 @@ func (b *bucket) Save(w io.Writer) error {
 	if err := writeUint64(w, uint64(chunksLen)); err != nil {
 		return fmt.Errorf("cannot write len(b.chunks): %s", err)
 	}
-	chunk := make([]byte, chunkSize)
 	for chunkIdx := 0; chunkIdx < chunksLen; chunkIdx++ {
-		b.mu.RLock()
-		copy(chunk, b.chunks[chunkIdx][:chunkSize])
-		b.mu.RUnlock()
+		chunk := b.chunks[chunkIdx][:chunkSize]
 		if _, err := w.Write(chunk); err != nil {
 			return fmt.Errorf("cannot write b.chunks[%d]: %s", chunkIdx, err)
 		}
