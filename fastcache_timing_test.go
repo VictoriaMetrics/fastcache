@@ -388,35 +388,26 @@ func BenchmarkSyncMapSetGet(b *testing.B) {
 	})
 }
 
-func BenchmarkCache_Keys(b *testing.B) {
-	keys := []string{
-		"username",
-		"firstname",
-		"lastname",
-	}
-	pattern := "name$"
-
-	items := 100 * len(keys)
-
-	c := New(items)
+func BenchmarkCache_VisitAllEntries(b *testing.B) {
+	itemsCount := 10000
+	c := New(30 * itemsCount)
 	defer c.Reset()
 
 	b.ReportAllocs()
-	b.SetBytes(int64(items))
+	b.SetBytes(int64(itemsCount))
 
-	for _, k := range keys {
-		c.Set([]byte(k), nil)
+	data := make(map[string][]byte)
+
+	for i := 0; i < itemsCount; i++ {
+		k := []byte(fmt.Sprintf("key %d", i))
+		v := []byte(fmt.Sprintf("value %d", i))
+		c.Set(k, v)
+		data[string(k)] = v
 	}
 
 	for n := 0; n < b.N; n++ {
-		keys, err := c.Keys(pattern)
-
-		if err != nil {
-			panic(fmt.Errorf("BUG: error for valid pattern \"%s\" (%s)", pattern, err))
-		}
-
-		if len(keys) == 0 {
-			panic(fmt.Errorf("BUG: no key for valid pattern \"%s\"", pattern))
-		}
+		_ = c.VisitAllEntries(func(k, v []byte) error {
+			return nil
+		})
 	}
 }

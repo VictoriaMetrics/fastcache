@@ -2,7 +2,6 @@ package fastcache
 
 import (
 	"fmt"
-	"regexp"
 	"sync"
 	"sync/atomic"
 
@@ -187,24 +186,38 @@ func (c *Cache) UpdateStats(s *Stats) {
 	s.InvalidValueHashErrors += atomic.LoadUint64(&c.bigStats.InvalidValueHashErrors)
 }
 
-// Keys retrieves all cached keys matching regex pattern
-func (c *Cache) Keys(pattern string) (keys [][]byte, err error) {
-	r, err := regexp.Compile(pattern)
-	if err != nil {
-		return
-	}
-
+// VisitAllEntries calls f for all the cache entries.
+//
+// The function returns immediately if f returns non-nil error.
+// It returns the given error.
+//
+// f cannot hold pointers to k and v contents after returning.
+func (c *Cache) VisitAllEntries(f func(k, v []byte) error) error {
 	for _, b := range c.buckets {
-		for _, chunk := range b.chunks {
-			if len(chunk) > 0 {
-				if key := chunk[4 : 4+chunk[1]]; r.Match(key) {
-					keys = append(keys, key)
-				}
+		b.mu.RLock()
+		for _, idx := range b.m {
+			idx &= (1 << bucketSizeBits) - 1
+			chunkIdx := idx / chunkSize
+			chunk := b.chunks[chunkIdx]
+
+			kvLenBuf := chunk[idx : idx+4]
+			keyLen := (uint64(kvLenBuf[0]) << 8) | uint64(kvLenBuf[1])
+			valLen := (uint64(kvLenBuf[2]) << 8) | uint64(kvLenBuf[3])
+
+			idx += 4
+			key := chunk[idx : idx+keyLen]
+
+			idx += keyLen
+			value := chunk[idx : idx+valLen]
+
+			if err := f(key, value); err != nil {
+				return err
 			}
 		}
+		b.mu.RUnlock()
 	}
 
-	return
+	return nil
 }
 
 type bucket struct {

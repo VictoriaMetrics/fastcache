@@ -168,73 +168,26 @@ func TestCacheGetSetConcurrent(t *testing.T) {
 	}
 }
 
-func TestCacheKeys(t *testing.T) {
-	keys := []string{
-		"username",
-		"firstname",
-		"lastname",
-	}
-
-	c := New(100 * len(keys))
+func TestCacheVisitAllEntries(t *testing.T) {
+	itemsCount := 10000
+	c := New(30 * itemsCount)
 	defer c.Reset()
 
-	for _, k := range keys {
-		c.Set([]byte(k), nil)
+	data := make(map[string][]byte)
+
+	for i := 0; i < itemsCount; i++ {
+		k := []byte(fmt.Sprintf("key %d", i))
+		v := []byte(fmt.Sprintf("value %d", i))
+		c.Set(k, v)
+		data[string(k)] = v
 	}
 
-	tests := []struct {
-		Pattern  string
-		Expected []string
-	}{
-		{
-			Pattern:  "",
-			Expected: keys,
-		},
-		{
-			Pattern:  "name$",
-			Expected: keys,
-		},
-		{
-			Pattern: "st",
-			Expected: []string{
-				"firstname",
-				"lastname",
-			},
-		},
-		{
-			Pattern:  " ",
-			Expected: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		result, err := c.Keys(tt.Pattern)
-		if err != nil {
-			t.Fatal(err)
+	_ = c.VisitAllEntries(func(k, v []byte) error {
+		if string(data[string(k)]) != string(v) {
+			t.Fatal("error fetching (k, v) pair")
 		}
-
-		count := 0
-		for _, r := range result {
-			for _, e := range tt.Expected {
-				if string(r) == e {
-					count++
-					break
-				}
-			}
-		}
-
-		if count != len(tt.Expected) {
-			t.Fatalf("failed to retrievs keys by pattern: \"%s\"", tt.Pattern)
-		}
-	}
-
-	result, err := c.Keys("*")
-	if result != nil {
-		t.Fatal("expected no matches")
-	}
-	if err == nil {
-		t.Fatal("expected regex error")
-	}
+		return nil
+	})
 }
 
 func testCacheGetSet(c *Cache, itemsCount int) error {

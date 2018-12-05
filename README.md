@@ -46,8 +46,7 @@ BenchmarkSyncMapGet-4       	    5000	   2316508 ns/op	  28.29 MB/s	    2543 B/o
 BenchmarkSyncMapSetGet-4    	    2000	  10444529 ns/op	  12.55 MB/s	 3412527 B/op	  262210 allocs/op
 BenchmarkSaveToFile-4       	      50	 259800249 ns/op	 129.15 MB/s	55739129 B/op	    3091 allocs/op
 BenchmarkLoadFromFile-4     	     100	 121189395 ns/op	 276.88 MB/s	98089036 B/op	    8748 allocs/op
-BenchmarkCache_Keys-8   	      100000	     18359 ns/op	  16.34 MB/s	   39072 B/op	      30 allocs/op
-
+BenchmarkCache_VisitAllEntries-4   50000        245913 ns/op      40.66 MB/s         170 B/op          2 allocs/op
 ```
 
 `MB/s` column here actually means `millions of operations per second`.
