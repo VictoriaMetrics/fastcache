@@ -1,6 +1,8 @@
 package fastcache
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"runtime"
 	"sync"
@@ -173,21 +175,44 @@ func TestCacheVisitAllEntries(t *testing.T) {
 	c := New(30 * itemsCount)
 	defer c.Reset()
 
-	data := make(map[string][]byte)
+	expected := make(map[string][]byte)
 
 	for i := 0; i < itemsCount; i++ {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		c.Set(k, v)
-		data[string(k)] = v
+		expected[string(k)] = v
 	}
 
-	_ = c.VisitAllEntries(func(k, v []byte) error {
-		if string(data[string(k)]) != string(v) {
-			t.Fatal("error fetching (k, v) pair")
-		}
+	result := make(map[string][]byte)
+
+	err := c.VisitAllEntries(func(k, v []byte) error {
+		result[string(k)] = v
 		return nil
 	})
+
+	if err != nil {
+		t.Fatalf("error was not expected: %s", err)
+	}
+
+	if len(result) != len(expected) {
+		t.Fatalf("visitor returned %d items instead of %d", len(result), len(expected))
+	}
+
+	for k, v := range expected {
+		if bytes.Compare(result[k], v) != 0 {
+			t.Fatalf("invalid value %v for key \"%s\", expected %v", result[k], k, v)
+		}
+	}
+
+	callBackErr := errors.New("err")
+	err = c.VisitAllEntries(func(k, v []byte) error {
+		return callBackErr
+	})
+
+	if err != callBackErr {
+		t.Fatal("error was expected")
+	}
 }
 
 func testCacheGetSet(c *Cache, itemsCount int) error {
