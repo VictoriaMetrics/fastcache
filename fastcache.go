@@ -189,9 +189,10 @@ func (c *Cache) UpdateStats(s *Stats) {
 // VisitAllEntries calls f for all the cache entries.
 //
 // The function returns immediately if f returns non-nil error.
-// It returns the given error.
+// It returns the error returned by f.
 //
 // f cannot hold pointers to k and v contents after returning.
+// f cannot modify k and v contents.
 func (c *Cache) VisitAllEntries(f func(k, v []byte) error) error {
 	for _, b := range c.buckets {
 		b.mu.RLock()
