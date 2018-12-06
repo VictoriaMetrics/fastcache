@@ -191,6 +191,7 @@ func (c *Cache) UpdateStats(s *Stats) {
 // The function returns immediately if f returns non-nil error.
 // It returns the error returned by f.
 //
+// f is called sequentially for all the entries in the cache.
 // f cannot hold pointers to k and v contents after returning.
 // f cannot modify k and v contents.
 func (c *Cache) VisitAllEntries(f func(k, v []byte) error) error {
