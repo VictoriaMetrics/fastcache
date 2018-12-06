@@ -195,27 +195,9 @@ func (c *Cache) UpdateStats(s *Stats) {
 // f cannot modify k and v contents.
 func (c *Cache) VisitAllEntries(f func(k, v []byte) error) error {
 	for _, b := range c.buckets {
-		b.mu.RLock()
-		for _, idx := range b.m {
-			idx &= (1 << bucketSizeBits) - 1
-			chunkIdx := idx / chunkSize
-			chunk := b.chunks[chunkIdx]
-
-			kvLenBuf := chunk[idx : idx+4]
-			keyLen := (uint64(kvLenBuf[0]) << 8) | uint64(kvLenBuf[1])
-			valLen := (uint64(kvLenBuf[2]) << 8) | uint64(kvLenBuf[3])
-
-			idx += 4
-			key := chunk[idx : idx+keyLen]
-
-			idx += keyLen
-			value := chunk[idx : idx+valLen]
-
-			if err := f(key, value); err != nil {
-				return err
-			}
+		if err := b.VisitAllEntries(f); err != nil {
+			return err
 		}
-		b.mu.RUnlock()
 	}
 
 	return nil
@@ -416,4 +398,31 @@ func (b *bucket) Del(h uint64) {
 	b.mu.Lock()
 	delete(b.m, h)
 	b.mu.Unlock()
+}
+
+func (b *bucket) VisitAllEntries(f func(k, v []byte) error) error {
+	b.mu.RLock()
+	for _, idx := range b.m {
+		idx &= (1 << bucketSizeBits) - 1
+		chunkIdx := idx / chunkSize
+		chunk := b.chunks[chunkIdx]
+
+		kvLenBuf := chunk[idx : idx+4]
+		keyLen := (uint64(kvLenBuf[0]) << 8) | uint64(kvLenBuf[1])
+		valLen := (uint64(kvLenBuf[2]) << 8) | uint64(kvLenBuf[3])
+
+		idx += 4
+		key := chunk[idx : idx+keyLen]
+
+		idx += keyLen
+		value := chunk[idx : idx+valLen]
+
+		if err := f(key, value); err != nil {
+			b.mu.RUnlock()
+			return err
+		}
+	}
+	b.mu.RUnlock()
+
+	return nil
 }
