@@ -412,10 +412,10 @@ func (b *bucket) VisitAllEntries(f func(k, v []byte) error) error {
 		valLen := (uint64(kvLenBuf[2]) << 8) | uint64(kvLenBuf[3])
 
 		idx += 4
-		key := chunk[idx : idx+keyLen]
+		key := chunk[idx : idx+keyLen : idx+keyLen]
 
 		idx += keyLen
-		value := chunk[idx : idx+valLen]
+		value := chunk[idx : idx+valLen : idx+valLen]
 
 		if err := f(key, value); err != nil {
 			b.mu.RUnlock()
