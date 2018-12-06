@@ -30,7 +30,15 @@ type Stats struct {
 	Misses uint64
 
 	// Collisions is the number of cache collisions.
+	//
+	// Usually the number of collisions must be close to zero.
+	// High number of collisions suggest something wrong with cache.
 	Collisions uint64
+
+	// Corruptions is the number of detected corruptions of the cache.
+	//
+	// Corruptions may occur when corrupted cache is loaded from file.
+	Corruptions uint64
 
 	// EntriesCount is the current number of entries in the cache.
 	EntriesCount uint64
@@ -144,10 +152,11 @@ type bucket struct {
 	// gen is the generation of chunks.
 	gen uint64
 
-	getCalls   uint64
-	setCalls   uint64
-	misses     uint64
-	collisions uint64
+	getCalls    uint64
+	setCalls    uint64
+	misses      uint64
+	collisions  uint64
+	corruptions uint64
 }
 
 func (b *bucket) Init(maxBytes uint64) {
@@ -200,6 +209,7 @@ func (b *bucket) UpdateStats(s *Stats) {
 	s.SetCalls += atomic.LoadUint64(&b.setCalls)
 	s.Misses += atomic.LoadUint64(&b.misses)
 	s.Collisions += atomic.LoadUint64(&b.collisions)
+	s.Corruptions += atomic.LoadUint64(&b.corruptions)
 
 	b.mu.RLock()
 	s.EntriesCount += uint64(len(b.m))
@@ -277,12 +287,27 @@ func (b *bucket) Get(dst, k []byte, h uint64) []byte {
 		idx := v & ((1 << bucketSizeBits) - 1)
 		if gen == b.gen && idx < b.idx || gen+1 == b.gen && idx >= b.idx {
 			chunkIdx := idx / chunkSize
-			idx %= chunkSize
+			if chunkIdx >= uint64(len(b.chunks)) {
+				// Corrupted data during the load from file. Just skip it.
+				atomic.AddUint64(&b.corruptions, 1)
+				goto end
+			}
 			chunk := b.chunks[chunkIdx]
+			idx %= chunkSize
+			if idx+4 >= chunkSize {
+				// Corrupted data during the load from file. Just skip it.
+				atomic.AddUint64(&b.corruptions, 1)
+				goto end
+			}
 			kvLenBuf := chunk[idx : idx+4]
 			keyLen := (uint64(kvLenBuf[0]) << 8) | uint64(kvLenBuf[1])
 			valLen := (uint64(kvLenBuf[2]) << 8) | uint64(kvLenBuf[3])
 			idx += 4
+			if idx+keyLen+valLen >= chunkSize {
+				// Corrupted data during the load from file. Just skip it.
+				atomic.AddUint64(&b.corruptions, 1)
+				goto end
+			}
 			if string(k) == string(chunk[idx:idx+keyLen]) {
 				idx += keyLen
 				dst = append(dst, chunk[idx:idx+valLen]...)
@@ -292,6 +317,7 @@ func (b *bucket) Get(dst, k []byte, h uint64) []byte {
 			}
 		}
 	}
+end:
 	b.mu.RUnlock()
 	if !found {
 		atomic.AddUint64(&b.misses, 1)
