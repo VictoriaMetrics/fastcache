@@ -402,24 +402,28 @@ func (b *bucket) Del(h uint64) {
 
 func (b *bucket) VisitAllEntries(f func(k, v []byte) error) error {
 	b.mu.RLock()
-	for _, idx := range b.m {
-		idx &= (1 << bucketSizeBits) - 1
-		chunkIdx := idx / chunkSize
-		chunk := b.chunks[chunkIdx]
+	for _, v := range b.m {
+		idx := v & ((1 << bucketSizeBits) - 1)
+		gen := v >> bucketSizeBits
 
-		kvLenBuf := chunk[idx : idx+4]
-		keyLen := (uint64(kvLenBuf[0]) << 8) | uint64(kvLenBuf[1])
-		valLen := (uint64(kvLenBuf[2]) << 8) | uint64(kvLenBuf[3])
+		if gen == b.gen && idx < b.idx || gen+1 == b.gen && idx >= b.idx {
+			chunkIdx := idx / chunkSize
+			chunk := b.chunks[chunkIdx]
 
-		idx += 4
-		key := chunk[idx : idx+keyLen : idx+keyLen]
+			kvLenBuf := chunk[idx : idx+4]
+			keyLen := (uint64(kvLenBuf[0]) << 8) | uint64(kvLenBuf[1])
+			valLen := (uint64(kvLenBuf[2]) << 8) | uint64(kvLenBuf[3])
 
-		idx += keyLen
-		value := chunk[idx : idx+valLen : idx+valLen]
+			idx += 4
+			key := chunk[idx : idx+keyLen : idx+keyLen]
 
-		if err := f(key, value); err != nil {
-			b.mu.RUnlock()
-			return err
+			idx += keyLen
+			value := chunk[idx : idx+valLen : idx+valLen]
+
+			if err := f(key, value); err != nil {
+				b.mu.RUnlock()
+				return err
+			}
 		}
 	}
 	b.mu.RUnlock()
