@@ -55,8 +55,7 @@ with inserts.
 
 * Keys and values must be byte slices. Other types must be marshaled before
   storing them in the cache.
-* Summary size of a (key, value) entry cannot exceed 64KB. Bigger values must be
-  split into smaller values before storing in the cache.
+* Big entries with sizes exceeding 64KB must be stored via [distinct API](http://godoc.org/github.com/VictoriaMetrics/fastcache#Cache.SetBig).
 * There is no cache expiration. Entries are evicted from the cache only
   on cache size overflow. Entry deadline may be stored inside the value in order
   to implement cache expiration.

@@ -45,11 +45,36 @@ type Stats struct {
 
 	// BytesSize is the current size of the cache in bytes.
 	BytesSize uint64
+
+	// BigStats contains stats for GetBig/SetBig methods.
+	BigStats
 }
 
 // Reset resets s, so it may be re-used again in Cache.UpdateStats.
 func (s *Stats) Reset() {
 	*s = Stats{}
+}
+
+// BigStats contains stats for GetBig/SetBig methods.
+type BigStats struct {
+	// TooBigKeyErrors is the number of calls to SetBig with too big key.
+	TooBigKeyErrors uint64
+
+	// InvalidMetavalueErrors is the number of calls to GetBig resulting
+	// to invalid metavalue.
+	InvalidMetavalueErrors uint64
+
+	// InvalidValueLenErrors is the number of calls to GetBig resulting
+	// to a chunk with invalid length.
+	InvalidValueLenErrors uint64
+
+	// InvalidValueHashErrors is the number of calls to GetBig resulting
+	// to a chunk with invalid hash value.
+	InvalidValueHashErrors uint64
+}
+
+func (bs *BigStats) reset() {
+	*bs = BigStats{}
 }
 
 // Cache is a fast thread-safe inmemory cache optimized for big number
@@ -64,6 +89,8 @@ func (s *Stats) Reset() {
 // memory.
 type Cache struct {
 	buckets [bucketsCount]bucket
+
+	bigStats BigStats
 }
 
 // New returns new cache with the given maxBytes capacity in bytes.
@@ -86,12 +113,15 @@ func New(maxBytes int) *Cache {
 
 // Set stores (k, v) in the cache.
 //
+// Get must be used for reading the stored entry.
+//
 // The stored entry may be evicted at any time either due to cache
 // overflow or due to unlikely hash collision.
 // Pass higher maxBytes value to New if the added items disappear
 // frequently.
 //
 // (k, v) entries with summary size exceeding 64KB aren't stored in the cache.
+// SetBig can be used for storing entries exceeding 64KB.
 //
 // k and v contents may be modified after returning from Set.
 func (c *Cache) Set(k, v []byte) {
@@ -103,6 +133,8 @@ func (c *Cache) Set(k, v []byte) {
 // Get appends value by the key k to dst and returns the result.
 //
 // Get allocates new byte slice for the returned value if dst is nil.
+//
+// Get returns only values stored in c via Set.
 //
 // k contents may be modified after returning from Get.
 func (c *Cache) Get(dst, k []byte) []byte {
@@ -125,6 +157,7 @@ func (c *Cache) Reset() {
 	for i := range c.buckets[:] {
 		c.buckets[i].Reset()
 	}
+	c.bigStats.reset()
 }
 
 // UpdateStats adds cache stats to s.
@@ -134,6 +167,10 @@ func (c *Cache) UpdateStats(s *Stats) {
 	for i := range c.buckets[:] {
 		c.buckets[i].UpdateStats(s)
 	}
+	s.TooBigKeyErrors += atomic.LoadUint64(&c.bigStats.TooBigKeyErrors)
+	s.InvalidMetavalueErrors += atomic.LoadUint64(&c.bigStats.InvalidMetavalueErrors)
+	s.InvalidValueLenErrors += atomic.LoadUint64(&c.bigStats.InvalidValueLenErrors)
+	s.InvalidValueHashErrors += atomic.LoadUint64(&c.bigStats.InvalidValueHashErrors)
 }
 
 type bucket struct {
