@@ -74,7 +74,10 @@ type BigStats struct {
 }
 
 func (bs *BigStats) reset() {
-	*bs = BigStats{}
+	atomic.StoreUint64(&bs.TooBigKeyErrors, 0)
+	atomic.StoreUint64(&bs.InvalidMetavalueErrors, 0)
+	atomic.StoreUint64(&bs.InvalidValueLenErrors, 0)
+	atomic.StoreUint64(&bs.InvalidValueHashErrors, 0)
 }
 
 // Cache is a fast thread-safe inmemory cache optimized for big number
@@ -219,9 +222,11 @@ func (b *bucket) Reset() {
 	}
 	b.idx = 0
 	b.gen = 1
-	b.getCalls = 0
-	b.setCalls = 0
-	b.misses = 0
+	atomic.StoreUint64(&b.getCalls, 0)
+	atomic.StoreUint64(&b.setCalls, 0)
+	atomic.StoreUint64(&b.misses, 0)
+	atomic.StoreUint64(&b.collisions, 0)
+	atomic.StoreUint64(&b.corruptions, 0)
 	b.mu.Unlock()
 }
 

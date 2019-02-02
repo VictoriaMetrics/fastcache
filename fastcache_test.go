@@ -2,6 +2,8 @@ package fastcache
 
 import (
 	"fmt"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
@@ -192,4 +194,68 @@ func testCacheGetSet(c *Cache, itemsCount int) error {
 		return fmt.Errorf("too many cache misses; got %d; want less than %d", misses, itemsCount/100)
 	}
 	return nil
+}
+
+func TestCacheResetUpdateStatsSetConcurrent(t *testing.T) {
+	c := New(12334)
+
+	stopCh := make(chan struct{})
+
+	// run workers for cache reset
+	var resettersWG sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		resettersWG.Add(1)
+		go func() {
+			defer resettersWG.Done()
+			for {
+				select {
+				case <-stopCh:
+					return
+				default:
+					c.Reset()
+					runtime.Gosched()
+				}
+			}
+		}()
+	}
+
+	// run workers for update cache stats
+	var statsWG sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		statsWG.Add(1)
+		go func() {
+			defer statsWG.Done()
+			var s Stats
+			for {
+				select {
+				case <-stopCh:
+					return
+				default:
+					c.UpdateStats(&s)
+					runtime.Gosched()
+				}
+			}
+		}()
+	}
+
+	// run workers for setting data to cache
+	var settersWG sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		settersWG.Add(1)
+		go func() {
+			defer settersWG.Done()
+			for j := 0; j < 100; j++ {
+				key := []byte(fmt.Sprintf("key_%d", j))
+				value := []byte(fmt.Sprintf("value_%d", j))
+				c.Set(key, value)
+				runtime.Gosched()
+			}
+		}()
+	}
+
+	// wait for setters
+	settersWG.Wait()
+	close(stopCh)
+	statsWG.Wait()
+	resettersWG.Wait()
 }
