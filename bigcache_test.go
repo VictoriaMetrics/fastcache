@@ -31,6 +31,14 @@ func testSetGetBig(t *testing.T, c *Cache, valueSize, valuesCount, seed int) {
 			t.Fatalf("seed=%d; unexpected value obtained for key=%q; got len(value)=%d; want len(value)=%d", seed, key, len(buf), len(value))
 		}
 	}
+	var s Stats
+	c.UpdateStats(&s)
+	if s.SetBigCalls < uint64(valuesCount) {
+		t.Fatalf("expecting SetBigCalls >= %d; got %d", valuesCount, s.SetBigCalls)
+	}
+	if s.GetBigCalls < uint64(valuesCount) {
+		t.Fatalf("expecting GetBigCalls >= %d; got %d", valuesCount, s.GetBigCalls)
+	}
 
 	// Verify that values stil exist
 	for key, value := range m {

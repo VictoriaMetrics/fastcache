@@ -57,6 +57,12 @@ func (s *Stats) Reset() {
 
 // BigStats contains stats for GetBig/SetBig methods.
 type BigStats struct {
+	// GetBigCalls is the number of GetBig calls.
+	GetBigCalls uint64
+
+	// SetBigCalls is the number of SetBig calls.
+	SetBigCalls uint64
+
 	// TooBigKeyErrors is the number of calls to SetBig with too big key.
 	TooBigKeyErrors uint64
 
@@ -74,6 +80,8 @@ type BigStats struct {
 }
 
 func (bs *BigStats) reset() {
+	atomic.StoreUint64(&bs.GetBigCalls, 0)
+	atomic.StoreUint64(&bs.SetBigCalls, 0)
 	atomic.StoreUint64(&bs.TooBigKeyErrors, 0)
 	atomic.StoreUint64(&bs.InvalidMetavalueErrors, 0)
 	atomic.StoreUint64(&bs.InvalidValueLenErrors, 0)
@@ -170,6 +178,8 @@ func (c *Cache) UpdateStats(s *Stats) {
 	for i := range c.buckets[:] {
 		c.buckets[i].UpdateStats(s)
 	}
+	s.GetBigCalls += atomic.LoadUint64(&c.bigStats.GetBigCalls)
+	s.SetBigCalls += atomic.LoadUint64(&c.bigStats.SetBigCalls)
 	s.TooBigKeyErrors += atomic.LoadUint64(&c.bigStats.TooBigKeyErrors)
 	s.InvalidMetavalueErrors += atomic.LoadUint64(&c.bigStats.InvalidMetavalueErrors)
 	s.InvalidValueLenErrors += atomic.LoadUint64(&c.bigStats.InvalidValueLenErrors)

@@ -34,6 +34,7 @@ const maxKeyLen = chunkSize - 16 - 4 - 1
 //
 // k and v contents may be modified after returning from SetBig.
 func (c *Cache) SetBig(k, v []byte) {
+	atomic.AddUint64(&c.bigStats.SetBigCalls, 1)
 	if len(k) > maxKeyLen {
 		atomic.AddUint64(&c.bigStats.TooBigKeyErrors, 1)
 		return
@@ -72,6 +73,7 @@ func (c *Cache) SetBig(k, v []byte) {
 //
 // k contents may be modified after returning from GetBig.
 func (c *Cache) GetBig(dst, k []byte) []byte {
+	atomic.AddUint64(&c.bigStats.GetBigCalls, 1)
 	subkey := getSubkeyBuf()
 	defer putSubkeyBuf(subkey)
 
