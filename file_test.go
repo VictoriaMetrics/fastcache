@@ -7,6 +7,38 @@ import (
 	"testing"
 )
 
+func TestSaveLoadSmall(t *testing.T) {
+	const filePath = "TestSaveLoadSmall.fastcache"
+	defer os.RemoveAll(filePath)
+
+	c := New(1)
+	defer c.Reset()
+
+	key := []byte("foobar")
+	value := []byte("abcdef")
+	c.Set(key, value)
+	if err := c.SaveToFile(filePath); err != nil {
+		t.Fatalf("SaveToFile error: %s", err)
+	}
+
+	c1, err := LoadFromFile(filePath)
+	if err != nil {
+		t.Fatalf("LoadFromFile error: %s", err)
+	}
+	vv := c1.Get(nil, key)
+	if string(vv) != string(value) {
+		t.Fatalf("unexpected value obtained from cache; got %q; want %q", vv, value)
+	}
+
+	// Verify that key can be overwritten.
+	newValue := []byte("234fdfd")
+	c1.Set(key, newValue)
+	vv = c1.Get(nil, key)
+	if string(vv) != string(newValue) {
+		t.Fatalf("unexpected new value obtained from cache; got %q; want %q", vv, newValue)
+	}
+}
+
 func TestSaveLoadFile(t *testing.T) {
 	for _, concurrency := range []int{0, 1, 2, 4, 10} {
 		t.Run(fmt.Sprintf("concurrency_%d", concurrency), func(t *testing.T) {
@@ -27,6 +59,10 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		c.Set(k, v)
+		vv := c.Get(nil, k)
+		if string(v) != string(vv) {
+			t.Fatalf("unexpected cache value for k=%q; got %q; want %q; bucket[0]=%#v", k, vv, v, &c.buckets[0])
+		}
 	}
 	if concurrency == 1 {
 		if err := c.SaveToFile(filePath); err != nil {
@@ -80,6 +116,44 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 		}
 	}
 	c.Reset()
+
+	// Overwrite existing keys
+	for i := 0; i < itemsCount; i++ {
+		k := []byte(fmt.Sprintf("key %d", i))
+		v := []byte(fmt.Sprintf("value %d", i))
+		c.Set(k, v)
+		vv := c.Get(nil, k)
+		if string(v) != string(vv) {
+			t.Fatalf("unexpected cache value for k=%q; got %q; want %q; bucket[0]=%#v", k, vv, v, &c.buckets[0])
+		}
+	}
+
+	// Add new keys
+	for i := 0; i < itemsCount; i++ {
+		k := []byte(fmt.Sprintf("new key %d", i))
+		v := []byte(fmt.Sprintf("new value %d", i))
+		c.Set(k, v)
+		vv := c.Get(nil, k)
+		if string(v) != string(vv) {
+			t.Fatalf("unexpected cache value for k=%q; got %q; want %q; bucket[0]=%#v", k, vv, v, &c.buckets[0])
+		}
+	}
+
+	// Verify all the keys exist
+	for i := 0; i < itemsCount; i++ {
+		k := []byte(fmt.Sprintf("key %d", i))
+		v := []byte(fmt.Sprintf("value %d", i))
+		vv := c.Get(nil, k)
+		if string(v) != string(vv) {
+			t.Fatalf("unexpected cache value for k=%q; got %q; want %q; bucket[0]=%#v", k, vv, v, &c.buckets[0])
+		}
+		k = []byte(fmt.Sprintf("new key %d", i))
+		v = []byte(fmt.Sprintf("new value %d", i))
+		vv = c.Get(nil, k)
+		if string(v) != string(vv) {
+			t.Fatalf("unexpected cache value for k=%q; got %q; want %q; bucket[0]=%#v", k, vv, v, &c.buckets[0])
+		}
+	}
 
 	// Verify incorrect maxBytes passed to LoadFromFileOrNew
 	c = LoadFromFileOrNew(filePath, maxBytes*10)

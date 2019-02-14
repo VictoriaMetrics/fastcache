@@ -357,6 +357,11 @@ func (b *bucket) Load(r io.Reader, maxChunks uint64) error {
 		}
 		chunks[chunkIdx] = chunk
 	}
+	// Truncate len for the last chunk. All the previous chunks already have chunkSize len.
+	if chunksLen > 0 {
+		chunkLen := bIdx % chunkSize
+		chunks[chunksLen-1] = chunks[chunksLen-1][:chunkLen]
+	}
 
 	b.mu.Lock()
 	for _, chunk := range b.chunks {
