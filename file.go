@@ -350,6 +350,10 @@ func (b *bucket) Load(r io.Reader, maxChunks uint64) error {
 	if chunksLen > uint64(maxChunks) {
 		return fmt.Errorf("chunksLen=%d cannot exceed maxChunks=%d", chunksLen, maxChunks)
 	}
+	currChunkIdx := bIdx / chunkSize
+	if currChunkIdx > 0 && currChunkIdx >= chunksLen {
+		return fmt.Errorf("too big bIdx=%d; should be smaller than %d", bIdx, chunksLen * chunkSize)
+	}
 	for chunkIdx := uint64(0); chunkIdx < chunksLen; chunkIdx++ {
 		chunk := getChunk()
 		if _, err := io.ReadFull(r, chunk); err != nil {
@@ -357,10 +361,10 @@ func (b *bucket) Load(r io.Reader, maxChunks uint64) error {
 		}
 		chunks[chunkIdx] = chunk
 	}
-	// Truncate len for the last chunk. All the previous chunks already have chunkSize len.
+	// Adjust len for the chunk pointed by currChunkIdx.
 	if chunksLen > 0 {
 		chunkLen := bIdx % chunkSize
-		chunks[chunksLen-1] = chunks[chunksLen-1][:chunkLen]
+		chunks[currChunkIdx] = chunks[currChunkIdx][:chunkLen]
 	}
 
 	b.mu.Lock()
