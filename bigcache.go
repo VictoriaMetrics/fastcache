@@ -92,7 +92,9 @@ func (c *Cache) GetBig(dst, k []byte) []byte {
 
 	// Collect result from chunks.
 	dstLen := len(dst)
-	dst = append(dst, make([]byte, int(valueLen))...)
+	if n := dstLen + int(valueLen) - cap(dst); n > 0 {
+		dst = append(dst[:cap(dst)], make([]byte, n)...)
+	}
 	dst = dst[:dstLen]
 	var i uint64
 	for uint64(len(dst)-dstLen) < valueLen {
