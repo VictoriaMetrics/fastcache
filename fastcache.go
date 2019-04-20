@@ -1,3 +1,6 @@
+// Package fastcache implements fast in-memory cache.
+//
+// The package has been extracted from https://victoriametrics.com/
 package fastcache
 
 import (
