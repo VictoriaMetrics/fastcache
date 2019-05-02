@@ -181,6 +181,37 @@ func BenchmarkCacheGet(b *testing.B) {
 	})
 }
 
+func BenchmarkCacheHas(b *testing.B) {
+	const items = 1 << 16
+	c := New(12 * items)
+	defer c.Reset()
+	k := []byte("\x00\x00\x00\x00")
+	for i := 0; i < items; i++ {
+		k[0]++
+		if k[0] == 0 {
+			k[1]++
+		}
+		c.Set(k, nil)
+	}
+
+	b.ReportAllocs()
+	b.SetBytes(items)
+	b.RunParallel(func(pb *testing.PB) {
+		k := []byte("\x00\x00\x00\x00")
+		for pb.Next() {
+			for i := 0; i < items; i++ {
+				k[0]++
+				if k[0] == 0 {
+					k[1]++
+				}
+				if !c.Has(k) {
+					panic(fmt.Errorf("BUG: missing value for key %q", k))
+				}
+			}
+		}
+	})
+}
+
 func BenchmarkCacheSetGet(b *testing.B) {
 	const items = 1 << 16
 	c := New(12 * items)

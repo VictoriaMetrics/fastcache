@@ -43,6 +43,20 @@ func TestCacheSmall(t *testing.T) {
 	if len(v) != 0 {
 		t.Fatalf("unexpected non-empty value obtained from empty cache: %q", v)
 	}
+
+	// Test empty value
+	k := []byte("empty")
+	c.Set(k, nil)
+	v = c.Get(nil, k)
+	if len(v) != 0 {
+		t.Fatalf("unexpected non-empty value obtained from empty entry: %q", v)
+	}
+	if !c.Has(k) {
+		t.Fatalf("cannot find empty entry for key %q", k)
+	}
+	if c.Has([]byte("foobar")) {
+		t.Fatalf("non-existing entry found in the cache")
+	}
 }
 
 func TestCacheWrap(t *testing.T) {

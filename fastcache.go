@@ -154,7 +154,16 @@ func (c *Cache) Set(k, v []byte) {
 func (c *Cache) Get(dst, k []byte) []byte {
 	h := xxhash.Sum64(k)
 	idx := h % bucketsCount
-	return c.buckets[idx].Get(dst, k, h)
+	dst, _ = c.buckets[idx].Get(dst, k, h, true)
+	return dst
+}
+
+// Has returns true if entry for the given key k exists in the cache.
+func (c *Cache) Has(k []byte) bool {
+	h := xxhash.Sum64(k)
+	idx := h % bucketsCount
+	_, ok := c.buckets[idx].Get(nil, k, h, false)
+	return ok
 }
 
 // Del deletes value for the given k from the cache.
@@ -332,7 +341,7 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 	b.mu.Unlock()
 }
 
-func (b *bucket) Get(dst, k []byte, h uint64) []byte {
+func (b *bucket) Get(dst, k []byte, h uint64, returnDst bool) ([]byte, bool) {
 	atomic.AddUint64(&b.getCalls, 1)
 	found := false
 	b.mu.RLock()
@@ -365,7 +374,9 @@ func (b *bucket) Get(dst, k []byte, h uint64) []byte {
 			}
 			if string(k) == string(chunk[idx:idx+keyLen]) {
 				idx += keyLen
-				dst = append(dst, chunk[idx:idx+valLen]...)
+				if returnDst {
+					dst = append(dst, chunk[idx:idx+valLen]...)
+				}
 				found = true
 			} else {
 				atomic.AddUint64(&b.collisions, 1)
@@ -377,7 +388,7 @@ end:
 	if !found {
 		atomic.AddUint64(&b.misses, 1)
 	}
-	return dst
+	return dst, found
 }
 
 func (b *bucket) Del(h uint64) {
