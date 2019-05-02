@@ -352,7 +352,7 @@ func (b *bucket) Load(r io.Reader, maxChunks uint64) error {
 	}
 	currChunkIdx := bIdx / chunkSize
 	if currChunkIdx > 0 && currChunkIdx >= chunksLen {
-		return fmt.Errorf("too big bIdx=%d; should be smaller than %d", bIdx, chunksLen * chunkSize)
+		return fmt.Errorf("too big bIdx=%d; should be smaller than %d", bIdx, chunksLen*chunkSize)
 	}
 	for chunkIdx := uint64(0); chunkIdx < chunksLen; chunkIdx++ {
 		chunk := getChunk()
