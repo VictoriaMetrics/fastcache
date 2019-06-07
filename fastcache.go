@@ -17,6 +17,8 @@ const chunkSize = 64 * 1024
 
 const bucketSizeBits = 40
 
+const genSizeBits = 64 - bucketSizeBits
+
 const maxBucketSize uint64 = 1 << bucketSizeBits
 
 // Stats represents cache stats.
@@ -254,7 +256,7 @@ func (b *bucket) Reset() {
 
 func (b *bucket) Clean() {
 	b.mu.Lock()
-	bGen := b.gen
+	bGen := b.gen & ((1 << genSizeBits) - 1)
 	bIdx := b.idx
 	bm := b.m
 	for k, v := range bm {
@@ -317,8 +319,8 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 			idxNew = kvLen
 			chunkIdx = 0
 			b.gen++
-			if b.gen == 0 {
-				b.gen = 1
+			if b.gen&((1<<genSizeBits)-1) == 0 {
+				b.gen++
 			}
 		} else {
 			idx = chunkIdxNew * chunkSize
@@ -346,10 +348,11 @@ func (b *bucket) Get(dst, k []byte, h uint64, returnDst bool) ([]byte, bool) {
 	found := false
 	b.mu.RLock()
 	v := b.m[h]
+	bGen := b.gen & ((1 << genSizeBits) - 1)
 	if v > 0 {
 		gen := v >> bucketSizeBits
 		idx := v & ((1 << bucketSizeBits) - 1)
-		if gen == b.gen && idx < b.idx || gen+1 == b.gen && idx >= b.idx {
+		if gen == bGen && idx < b.idx || gen+1 == bGen && idx >= b.idx {
 			chunkIdx := idx / chunkSize
 			if chunkIdx >= uint64(len(b.chunks)) {
 				// Corrupted data during the load from file. Just skip it.
