@@ -19,6 +19,8 @@ const bucketSizeBits = 40
 
 const genSizeBits = 64 - bucketSizeBits
 
+const maxGen = 1<<genSizeBits - 1
+
 const maxBucketSize uint64 = 1 << bucketSizeBits
 
 // Stats represents cache stats.
@@ -262,7 +264,7 @@ func (b *bucket) Clean() {
 	for k, v := range bm {
 		gen := v >> bucketSizeBits
 		idx := v & ((1 << bucketSizeBits) - 1)
-		if gen == bGen && idx < bIdx || gen+1 == bGen && idx >= bIdx {
+		if gen == bGen && idx < bIdx || gen+1 == bGen && idx >= bIdx || gen == maxGen && bGen == 1 && idx >= bIdx {
 			continue
 		}
 		delete(bm, k)
@@ -352,7 +354,7 @@ func (b *bucket) Get(dst, k []byte, h uint64, returnDst bool) ([]byte, bool) {
 	if v > 0 {
 		gen := v >> bucketSizeBits
 		idx := v & ((1 << bucketSizeBits) - 1)
-		if gen == bGen && idx < b.idx || gen+1 == bGen && idx >= b.idx {
+		if gen == bGen && idx < b.idx || gen+1 == bGen && idx >= b.idx || gen == maxGen && bGen == 1 && idx >= b.idx {
 			chunkIdx := idx / chunkSize
 			if chunkIdx >= uint64(len(b.chunks)) {
 				// Corrupted data during the load from file. Just skip it.
