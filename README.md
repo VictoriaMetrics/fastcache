@@ -3,7 +3,7 @@
 [![Go Report](https://goreportcard.com/badge/github.com/VictoriaMetrics/fastcache)](https://goreportcard.com/report/github.com/VictoriaMetrics/fastcache)
 [![codecov](https://codecov.io/gh/VictoriaMetrics/fastcache/branch/master/graph/badge.svg)](https://codecov.io/gh/VictoriaMetrics/fastcache)
 
-# fastcache - fast thread-safe inmemory cache for big number of entries in Go
+# fastcache - fast thread-safe inmemory cache for big number of entries in Go.
 
 ### Features
 
