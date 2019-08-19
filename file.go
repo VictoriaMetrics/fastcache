@@ -79,20 +79,28 @@ func (c *Cache) SaveToFileConcurrent(filePath string, concurrency int) error {
 // LoadFromFile loads cache data from the given filePath.
 //
 // See SaveToFile* for saving cache data to file.
-func LoadFromFile(filePath string) (*Cache, error) {
-	return load(filePath, 0)
+func LoadFromFile(filePath string, config Config) (*Cache, error) {
+	// Don't panic for lazy user who doesn't specify the hasher.
+	if config.Hasher == nil {
+		config.Hasher = xxhasher{}
+	}
+	return load(filePath, config.MaxBytes, config.Hasher)
 }
 
 // LoadFromFileOrNew tries loading cache data from the given filePath.
 //
 // The function falls back to creating new cache with the given maxBytes
 // capacity if error occurs during loading the cache from file.
-func LoadFromFileOrNew(filePath string, maxBytes int) *Cache {
-	c, err := load(filePath, maxBytes)
+func LoadFromFileOrNew(filePath string, config Config) *Cache {
+	// Don't panic for lazy user who doesn't specify the hasher.
+	if config.Hasher == nil {
+		config.Hasher = xxhasher{}
+	}
+	c, err := load(filePath, config.MaxBytes, config.Hasher)
 	if err == nil {
 		return c
 	}
-	return New(maxBytes)
+	return New(config)
 }
 
 func (c *Cache) save(dir string, workersCount int) error {
@@ -125,7 +133,7 @@ func (c *Cache) save(dir string, workersCount int) error {
 	return err
 }
 
-func load(filePath string, maxBytes int) (*Cache, error) {
+func load(filePath string, maxBytes int, hasher Hasher) (*Cache, error) {
 	maxBucketChunks, err := loadMetadata(filePath)
 	if err != nil {
 		return nil, err
@@ -152,7 +160,7 @@ func load(filePath string, maxBytes int) (*Cache, error) {
 	}
 	results := make(chan error)
 	workersCount := 0
-	var c Cache
+	c := Cache{hasher: hasher}
 	for _, fi := range fis {
 		fn := fi.Name()
 		if fi.IsDir() || !dataFileRegexp.MatchString(fn) {

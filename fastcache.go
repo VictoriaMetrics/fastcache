@@ -23,6 +23,28 @@ const maxGen = 1<<genSizeBits - 1
 
 const maxBucketSize uint64 = 1 << bucketSizeBits
 
+// Hasher is responsible for generating unsigned, 64 bit digest of provided input.
+// Hasher should minimize collisions and while performance is also important fast
+// functions are preferable.
+type Hasher interface {
+	Sum64([]byte) uint64
+}
+
+// xxhasher is the default hasher which uses xxhash to calculating the 64-bit
+// digest of given input.
+type xxhasher struct{}
+
+func (h xxhasher) Sum64(input []byte) uint64 { return xxhash.Sum64(input) }
+
+type Config struct {
+	// MaxBytes is the limit for cache size in bytes.
+	MaxBytes int
+
+	// Hasher is a tool for calculating the 64-bit digest corresponding to the key.
+	// The default hasher is xxhasher.
+	Hasher Hasher
+}
+
 // Stats represents cache stats.
 //
 // Use Cache.UpdateStats for obtaining fresh stats from the cache.
@@ -106,6 +128,7 @@ func (bs *BigStats) reset() {
 // Call Reset when the cache is no longer needed. This reclaims the allocated
 // memory.
 type Cache struct {
+	hasher  Hasher
 	buckets [bucketsCount]bucket
 
 	bigStats BigStats
@@ -117,12 +140,18 @@ type Cache struct {
 // since the cache holds data in memory.
 //
 // If maxBytes is less than 32MB, then the minimum cache capacity is 32MB.
-func New(maxBytes int) *Cache {
-	if maxBytes <= 0 {
-		panic(fmt.Errorf("maxBytes must be greater than 0; got %d", maxBytes))
+func New(config Config) *Cache {
+	// Sanitize invalid cache config.
+	if config.MaxBytes <= 0 {
+		panic(fmt.Errorf("maxBytes must be greater than 0; got %d", config.MaxBytes))
+	}
+	// Don't panic for lazy user if hasher is not specified.
+	if config.Hasher == nil {
+		config.Hasher = xxhasher{}
 	}
 	var c Cache
-	maxBucketBytes := uint64((maxBytes + bucketsCount - 1) / bucketsCount)
+	c.hasher = config.Hasher
+	maxBucketBytes := uint64((config.MaxBytes + bucketsCount - 1) / bucketsCount)
 	for i := range c.buckets[:] {
 		c.buckets[i].Init(maxBucketBytes)
 	}
@@ -143,7 +172,7 @@ func New(maxBytes int) *Cache {
 //
 // k and v contents may be modified after returning from Set.
 func (c *Cache) Set(k, v []byte) {
-	h := xxhash.Sum64(k)
+	h := c.hasher.Sum64(k)
 	idx := h % bucketsCount
 	c.buckets[idx].Set(k, v, h)
 }
@@ -156,7 +185,7 @@ func (c *Cache) Set(k, v []byte) {
 //
 // k contents may be modified after returning from Get.
 func (c *Cache) Get(dst, k []byte) []byte {
-	h := xxhash.Sum64(k)
+	h := c.hasher.Sum64(k)
 	idx := h % bucketsCount
 	dst, _ = c.buckets[idx].Get(dst, k, h, true)
 	return dst
@@ -164,7 +193,7 @@ func (c *Cache) Get(dst, k []byte) []byte {
 
 // Has returns true if entry for the given key k exists in the cache.
 func (c *Cache) Has(k []byte) bool {
-	h := xxhash.Sum64(k)
+	h := c.hasher.Sum64(k)
 	idx := h % bucketsCount
 	_, ok := c.buckets[idx].Get(nil, k, h, false)
 	return ok
@@ -174,7 +203,7 @@ func (c *Cache) Has(k []byte) bool {
 //
 // k contents may be modified after returning from Del.
 func (c *Cache) Del(k []byte) {
-	h := xxhash.Sum64(k)
+	h := c.hasher.Sum64(k)
 	idx := h % bucketsCount
 	c.buckets[idx].Del(h)
 }

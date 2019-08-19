@@ -51,7 +51,7 @@ func benchmarkLoadFromFile(b *testing.B, concurrency int) {
 	b.ResetTimer()
 	b.SetBytes(benchCacheSize)
 	for i := 0; i < b.N; i++ {
-		c, err := LoadFromFile(filePath)
+		c, err := LoadFromFile(filePath, Config{MaxBytes: 0}) // Disable bucket size checking
 		if err != nil {
 			b.Fatalf("cannot load cache from file: %s", err)
 		}
@@ -70,7 +70,7 @@ var (
 
 func newBenchCache() *Cache {
 	benchCacheOnce.Do(func() {
-		c := New(benchCacheSize)
+		c := New(Config{MaxBytes: benchCacheSize})
 		itemsCount := benchCacheSize / 20
 		for i := 0; i < itemsCount; i++ {
 			k := []byte(fmt.Sprintf("key %d", i))

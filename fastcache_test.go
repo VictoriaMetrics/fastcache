@@ -9,7 +9,7 @@ import (
 )
 
 func TestCacheSmall(t *testing.T) {
-	c := New(1)
+	c := New(Config{MaxBytes: 1})
 	defer c.Reset()
 
 	v := c.Get(nil, []byte("aaa"))
@@ -60,7 +60,7 @@ func TestCacheSmall(t *testing.T) {
 }
 
 func TestCacheWrap(t *testing.T) {
-	c := New(bucketsCount * chunkSize * 1.5)
+	c := New(Config{MaxBytes: bucketsCount * chunkSize * 1.5})
 	defer c.Reset()
 
 	calls := uint64(5e6)
@@ -108,7 +108,7 @@ func TestCacheWrap(t *testing.T) {
 }
 
 func TestCacheDel(t *testing.T) {
-	c := New(1024)
+	c := New(Config{MaxBytes: 1024})
 	defer c.Reset()
 	for i := 0; i < 100; i++ {
 		k := []byte(fmt.Sprintf("key %d", i))
@@ -127,7 +127,7 @@ func TestCacheDel(t *testing.T) {
 }
 
 func TestCacheBigKeyValue(t *testing.T) {
-	c := New(1024)
+	c := New(Config{MaxBytes: 1024})
 	defer c.Reset()
 
 	// Both key and value exceed 64Kb
@@ -151,7 +151,7 @@ func TestCacheBigKeyValue(t *testing.T) {
 
 func TestCacheSetGetSerial(t *testing.T) {
 	itemsCount := 10000
-	c := New(30 * itemsCount)
+	c := New(Config{MaxBytes: 30 * itemsCount})
 	defer c.Reset()
 	if err := testCacheGetSet(c, itemsCount); err != nil {
 		t.Fatalf("unexpected error: %s", err)
@@ -159,18 +159,20 @@ func TestCacheSetGetSerial(t *testing.T) {
 }
 
 func TestCacheGetSetConcurrent(t *testing.T) {
-	itemsCount := 10000
-	const gorotines = 10
-	c := New(30 * itemsCount * gorotines)
+	const (
+		itemsCount = 10000
+		goroutines = 10
+	)
+	c := New(Config{MaxBytes: 30 * itemsCount * goroutines})
 	defer c.Reset()
 
-	ch := make(chan error, gorotines)
-	for i := 0; i < gorotines; i++ {
+	ch := make(chan error, goroutines)
+	for i := 0; i < goroutines; i++ {
 		go func() {
 			ch <- testCacheGetSet(c, itemsCount)
 		}()
 	}
-	for i := 0; i < gorotines; i++ {
+	for i := 0; i < goroutines; i++ {
 		select {
 		case err := <-ch:
 			if err != nil {
@@ -211,8 +213,7 @@ func testCacheGetSet(c *Cache, itemsCount int) error {
 }
 
 func TestCacheResetUpdateStatsSetConcurrent(t *testing.T) {
-	c := New(12334)
-
+	c := New(Config{MaxBytes: 12334})
 	stopCh := make(chan struct{})
 
 	// run workers for cache reset
