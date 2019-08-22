@@ -11,7 +11,7 @@ func TestSaveLoadSmall(t *testing.T) {
 	const filePath = "TestSaveLoadSmall.fastcache"
 	defer os.RemoveAll(filePath)
 
-	c := New(Config{MaxBytes: 1})
+	c := NewWithConfig(Config{MaxBytes: 1})
 	defer c.Reset()
 
 	key := []byte("foobar")
@@ -21,7 +21,7 @@ func TestSaveLoadSmall(t *testing.T) {
 		t.Fatalf("SaveToFile error: %s", err)
 	}
 
-	c1, err := LoadFromFile(filePath, Config{MaxBytes: 1})
+	c1, err := LoadFromFileWithConfig(filePath, Config{MaxBytes: 1})
 	if err != nil {
 		t.Fatalf("LoadFromFile error: %s", err)
 	}
@@ -54,7 +54,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 
 	const itemsCount = 10000
 	const maxBytes = bucketsCount * chunkSize * 2
-	c := New(Config{MaxBytes: maxBytes})
+	c := NewWithConfig(Config{MaxBytes: maxBytes})
 	for i := 0; i < itemsCount; i++ {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
@@ -81,7 +81,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	c.Reset()
 
 	// Verify LoadFromFile
-	c, err := LoadFromFile(filePath, Config{MaxBytes: maxBytes})
+	c, err := LoadFromFileWithConfig(filePath, Config{MaxBytes: maxBytes})
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -101,7 +101,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	c.Reset()
 
 	// Verify LoadFromFileOrNew
-	c = LoadFromFileOrNew(filePath, Config{MaxBytes: maxBytes})
+	c = LoadFromFileOrNewWithConfig(filePath, Config{MaxBytes: maxBytes})
 	s.Reset()
 	c.UpdateStats(&s)
 	if s.EntriesCount != itemsCount {
@@ -156,7 +156,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	}
 
 	// Verify incorrect maxBytes passed to LoadFromFileOrNew
-	c = LoadFromFileOrNew(filePath, Config{MaxBytes: maxBytes * 10})
+	c = LoadFromFileOrNewWithConfig(filePath, Config{MaxBytes: maxBytes * 10})
 	s.Reset()
 	c.UpdateStats(&s)
 	if s.EntriesCount != 0 {
@@ -166,7 +166,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 }
 
 func TestSaveLoadConcurrent(t *testing.T) {
-	c := New(Config{MaxBytes: 1024})
+	c := NewWithConfig(Config{MaxBytes: 1024})
 	defer c.Reset()
 	c.Set([]byte("foo"), []byte("bar"))
 
@@ -210,7 +210,7 @@ func TestSaveLoadConcurrent(t *testing.T) {
 				if err := c.SaveToFileConcurrent(filePath, 3); err != nil {
 					panic(fmt.Errorf("cannot save cache to %q: %s", filePath, err))
 				}
-				cc, err := LoadFromFile(filePath, Config{MaxBytes: 1024})
+				cc, err := LoadFromFileWithConfig(filePath, Config{MaxBytes: 1024})
 				if err != nil {
 					panic(fmt.Errorf("cannot load cache from %q: %s", filePath, err))
 				}

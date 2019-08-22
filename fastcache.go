@@ -140,7 +140,29 @@ type Cache struct {
 // since the cache holds data in memory.
 //
 // If maxBytes is less than 32MB, then the minimum cache capacity is 32MB.
-func New(config Config) *Cache {
+//
+// Deprecated: use NewWithConfig instead.
+func New(maxBytes int) *Cache {
+	// Sanitize invalid cache config.
+	if maxBytes <= 0 {
+		panic(fmt.Errorf("maxBytes must be greater than 0; got %d", maxBytes))
+	}
+	var c Cache
+	c.hasher = xxhasher{} // Default hasher is used for legacy initialization.
+	maxBucketBytes := uint64((maxBytes + bucketsCount - 1) / bucketsCount)
+	for i := range c.buckets[:] {
+		c.buckets[i].Init(maxBucketBytes)
+	}
+	return &c
+}
+
+// NewWithConfig returns new cache with given cache config.
+//
+// MaxBytes in config must be smaller than the available RAM size for the app,
+// since the cache holds data in memory.
+//
+// If MaxBytes is less than 32MB, then the minimum cache capacity is 32MB.
+func NewWithConfig(config Config) *Cache {
 	// Sanitize invalid cache config.
 	if config.MaxBytes <= 0 {
 		panic(fmt.Errorf("maxBytes must be greater than 0; got %d", config.MaxBytes))

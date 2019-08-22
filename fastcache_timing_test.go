@@ -128,7 +128,7 @@ func b2s(b []byte) string {
 
 func BenchmarkCacheSet(b *testing.B) {
 	const items = 1 << 16
-	c := New(Config{MaxBytes: 12 * items})
+	c := NewWithConfig(Config{MaxBytes: 12 * items})
 	defer c.Reset()
 	b.ReportAllocs()
 	b.SetBytes(items)
@@ -149,7 +149,7 @@ func BenchmarkCacheSet(b *testing.B) {
 
 func BenchmarkCacheGet(b *testing.B) {
 	const items = 1 << 16
-	c := New(Config{MaxBytes: 12 * items})
+	c := NewWithConfig(Config{MaxBytes: 12 * items})
 	defer c.Reset()
 	k := []byte("\x00\x00\x00\x00")
 	v := []byte("xyza")
@@ -183,7 +183,7 @@ func BenchmarkCacheGet(b *testing.B) {
 
 func BenchmarkCacheHas(b *testing.B) {
 	const items = 1 << 16
-	c := New(Config{MaxBytes: 12 * items})
+	c := NewWithConfig(Config{MaxBytes: 12 * items})
 	defer c.Reset()
 	k := []byte("\x00\x00\x00\x00")
 	for i := 0; i < items; i++ {
@@ -214,7 +214,7 @@ func BenchmarkCacheHas(b *testing.B) {
 
 func BenchmarkCacheSetGet(b *testing.B) {
 	const items = 1 << 16
-	c := New(Config{MaxBytes: 12 * items})
+	c := NewWithConfig(Config{MaxBytes: 12 * items})
 	defer c.Reset()
 	b.ReportAllocs()
 	b.SetBytes(2 * items)
