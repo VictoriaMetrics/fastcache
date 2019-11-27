@@ -12,43 +12,52 @@ func TestCacheSmall(t *testing.T) {
 	c := New(1)
 	defer c.Reset()
 
-	v := c.Get(nil, []byte("aaa"))
-	if len(v) != 0 {
+	if v := c.Get(nil, []byte("aaa")); len(v) != 0 {
+		t.Fatalf("unexpected non-empty value obtained from small cache: %q", v)
+	}
+	if v, exist := c.HasGet(nil, []byte("aaa")); exist || len(v) != 0 {
 		t.Fatalf("unexpected non-empty value obtained from small cache: %q", v)
 	}
 
 	c.Set([]byte("key"), []byte("value"))
-	v = c.Get(nil, []byte("key"))
-	if string(v) != "value" {
+	if v := c.Get(nil, []byte("key")); string(v) != "value" {
 		t.Fatalf("unexpected value obtained; got %q; want %q", v, "value")
 	}
-
-	v = c.Get(nil, nil)
-	if len(v) != 0 {
+	if v := c.Get(nil, nil); len(v) != 0 {
 		t.Fatalf("unexpected non-empty value obtained from small cache: %q", v)
 	}
-	v = c.Get(nil, []byte("aaa"))
-	if len(v) != 0 {
+	if v, exist := c.HasGet(nil, nil); exist {
+		t.Fatalf("unexpected nil-keyed value obtained in small cache: %q", v)
+	}
+	if v := c.Get(nil, []byte("aaa")); len(v) != 0 {
 		t.Fatalf("unexpected non-empty value obtained from small cache: %q", v)
 	}
 
 	c.Set([]byte("aaa"), []byte("bbb"))
-	v = c.Get(nil, []byte("aaa"))
-	if string(v) != "bbb" {
+	if v := c.Get(nil, []byte("aaa")); string(v) != "bbb" {
+		t.Fatalf("unexpected value obtained; got %q; want %q", v, "bbb")
+	}
+	if v, exist := c.HasGet(nil, []byte("aaa")); !exist || string(v) != "bbb" {
 		t.Fatalf("unexpected value obtained; got %q; want %q", v, "bbb")
 	}
 
 	c.Reset()
-	v = c.Get(nil, []byte("aaa"))
-	if len(v) != 0 {
+	if v := c.Get(nil, []byte("aaa")); len(v) != 0 {
 		t.Fatalf("unexpected non-empty value obtained from empty cache: %q", v)
+	}
+	if v, exist := c.HasGet(nil, []byte("aaa")); exist || len(v) != 0 {
+		t.Fatalf("unexpected non-empty value obtained from small cache: %q", v)
 	}
 
 	// Test empty value
 	k := []byte("empty")
 	c.Set(k, nil)
-	v = c.Get(nil, k)
-	if len(v) != 0 {
+	if v := c.Get(nil, k); len(v) != 0 {
+		t.Fatalf("unexpected non-empty value obtained from empty entry: %q", v)
+	}
+	if v, exist := c.HasGet(nil, k); !exist {
+		t.Fatalf("cannot find empty entry for key %q", k)
+	} else if len(v) != 0 {
 		t.Fatalf("unexpected non-empty value obtained from empty entry: %q", v)
 	}
 	if !c.Has(k) {
