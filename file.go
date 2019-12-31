@@ -118,7 +118,7 @@ func (c *Cache) save(dir string, workersCount int) error {
 	var err error
 	for i := 0; i < workersCount; i++ {
 		result := <-results
-		if result != nil && err != nil {
+		if result != nil && err == nil {
 			err = result
 		}
 	}
