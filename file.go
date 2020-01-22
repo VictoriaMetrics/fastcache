@@ -173,6 +173,16 @@ func load(filePath string, maxBytes int) (*Cache, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Initialize buckets, which could be missing due to incomplete or corrupted files in the cache.
+	// It is better initializing such buckets instead of returning error, since the rest of buckets
+	// contain valid data.
+	for i := range c.buckets[:] {
+		b := &c.buckets[i]
+		if len(b.chunks) == 0 {
+			b.chunks = make([][]byte, maxBucketChunks)
+			b.m = make(map[uint64]uint64)
+		}
+	}
 	return &c, nil
 }
 
