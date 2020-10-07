@@ -35,6 +35,10 @@ func (c *Cache) SaveToFile(filePath string) error {
 //
 // See also SaveToFile.
 func (c *Cache) SaveToFileConcurrent(filePath string, concurrency int) error {
+	// trim right slash, user may supply a dir with right slash (/a/b/ccachedir/ or c:\a\b\cache\ in Windows),
+	// and filepath.Dir will return filePath it self, but the parrent dir of filePath is expected.
+	filePath = strings.TrimRight(filePath, "/\\")
+
 	// Create dir if it doesn't exist.
 	dir := filepath.Dir(filePath)
 	if _, err := os.Stat(dir); err != nil {
