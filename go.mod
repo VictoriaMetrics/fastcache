@@ -1,5 +1,7 @@
 module github.com/VictoriaMetrics/fastcache
 
+go 1.15
+
 require (
 	github.com/allegro/bigcache v1.2.1-0.20190218064605-e24eb225f156
 	github.com/cespare/xxhash/v2 v2.1.1

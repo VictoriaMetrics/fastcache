@@ -1,6 +1,7 @@
 package fastcache
 
 import (
+	"bytes"
 	"fmt"
 	"runtime"
 	"sync"
@@ -281,4 +282,77 @@ func TestCacheResetUpdateStatsSetConcurrent(t *testing.T) {
 	close(stopCh)
 	statsWG.Wait()
 	resettersWG.Wait()
+}
+
+func TestCacheCopyKeys(t *testing.T) {
+	c := New(1024)
+	defer c.Reset()
+
+	numEntries := 100
+	for i := 0; i < numEntries; i++ {
+		k := []byte(fmt.Sprintf("key %d", i))
+		v := []byte(fmt.Sprintf("value %d", i))
+		c.Set(k, v)
+		vv := c.Get(nil, k)
+		if string(vv) != string(v) {
+			t.Fatalf("unexpected value for key %q; got %q; want %q", k, vv, v)
+		}
+	}
+
+	keys := make(map[string]struct{})
+	keyCount := 0
+	for _, b := range c.buckets {
+		bucketKeys, bucketKeyCount := b.copyKeys()
+		keyCount += bucketKeyCount
+		for _, k := range bucketKeys {
+			keys[string(k)] = struct{}{}
+		}
+	}
+
+	if keyCount != numEntries {
+		t.Fatal("returned number of currBucketKeys is not matched to the expected one",
+			"expected", numEntries, "actual", keyCount)
+	}
+
+	for i := 0; i < numEntries; i++ {
+		k := []byte(fmt.Sprintf("key %d", i))
+		if _, exist := keys[string(k)]; !exist {
+			t.Fatal("failed to find the key from returned currBucketKeys", "key", string(k))
+		}
+	}
+}
+
+func TestCacheIterator(t *testing.T) {
+	c := New(1024)
+	defer c.Reset()
+
+	numEntries := 100
+	keyValMap := make(map[string][]byte)
+	for i := 0; i < numEntries; i++ {
+		k := []byte(fmt.Sprintf("key %d", i))
+		v := []byte(fmt.Sprintf("value %d", i))
+		c.Set(k, v)
+		keyValMap[string(k)] = v
+		vv := c.Get(nil, k)
+		if string(vv) != string(v) {
+			t.Fatalf("unexpected value for key %q; got %q; want %q", k, vv, v)
+		}
+	}
+
+	itr := c.Iterator()
+	for itr.SetNext() {
+		entry, err := itr.Value()
+		if err != nil {
+			t.Fatal("unexpected error from itr.Value()", "err", err)
+		}
+
+		val, exist := keyValMap[string(entry.key)]
+		if !exist {
+			t.Fatal("failed to retrieve an entry from cache which should exist")
+		}
+		if !bytes.Equal(val, entry.value) {
+			t.Fatalf("value from iterator is not the same as the expected one for key %q; got %q; want %q",
+				entry.key, entry.value, val)
+		}
+	}
 }
