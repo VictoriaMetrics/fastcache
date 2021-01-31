@@ -211,6 +211,11 @@ func (c *Cache) UpdateStats(s *Stats) {
 	s.InvalidValueHashErrors += atomic.LoadUint64(&c.bigStats.InvalidValueHashErrors)
 }
 
+// Iterator returns an fastcache iterator to iterate over the entire cache.
+func (c *Cache) Iterator() *Iterator {
+	return newIterator(c)
+}
+
 type bucket struct {
 	mu sync.RWMutex
 
@@ -412,4 +417,31 @@ func (b *bucket) Del(h uint64) {
 	b.mu.Lock()
 	delete(b.m, h)
 	b.mu.Unlock()
+}
+
+func (b *bucket) copyKeys() ([][]byte, int) {
+	b.mu.RLock()
+
+	keys := make([][]byte, len(b.m))
+	numKeys := 0
+
+	for _, v := range b.m {
+		idx := v & ((1 << bucketSizeBits) - 1)
+		gen := v >> bucketSizeBits
+
+		if gen == b.gen && idx < b.idx || gen+1 == b.gen && idx >= b.idx {
+			chunkIdx := idx / chunkSize
+			chunk := b.chunks[chunkIdx]
+
+			kvLenBuf := chunk[idx : idx+4]
+			keyLen := (uint64(kvLenBuf[0]) << 8) | uint64(kvLenBuf[1])
+
+			idx += 4
+			key := chunk[idx : idx+keyLen : idx+keyLen]
+			keys[numKeys] = key
+			numKeys++
+		}
+	}
+	b.mu.RUnlock()
+	return keys, numKeys
 }
