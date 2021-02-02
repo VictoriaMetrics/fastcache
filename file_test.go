@@ -2,13 +2,19 @@ package fastcache
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 )
 
 func TestSaveLoadSmall(t *testing.T) {
-	const filePath = "TestSaveLoadSmall.fastcache"
+	tmpDir, err := ioutil.TempDir("", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	filePath := filepath.Join(tmpDir, "TestSaveLoadSmall.fastcache")
 	defer os.RemoveAll(filePath)
 
 	c := New(1)
@@ -49,7 +55,11 @@ func TestSaveLoadFile(t *testing.T) {
 
 func testSaveLoadFile(t *testing.T, concurrency int) {
 	var s Stats
-	filePath := fmt.Sprintf("TestSaveLoadFile.%d.fastcache", concurrency)
+	tmpDir, err := ioutil.TempDir("", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	filePath := filepath.Join(tmpDir, fmt.Sprintf("TestSaveLoadFile.%d.fastcache", concurrency))
 	defer os.RemoveAll(filePath)
 
 	const itemsCount = 10000
@@ -81,7 +91,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	c.Reset()
 
 	// Verify LoadFromFile
-	c, err := LoadFromFile(filePath)
+	c, err = LoadFromFile(filePath)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -199,10 +209,16 @@ func TestSaveLoadConcurrent(t *testing.T) {
 	}
 
 	// Start concurrent SaveToFile and LoadFromFile calls.
+	tmpDir, err := ioutil.TempDir("", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
 	var wgSavers sync.WaitGroup
 	for i := 0; i < 4; i++ {
 		wgSavers.Add(1)
-		filePath := fmt.Sprintf("TestSaveToFileConcurrent.%d.fastcache", i)
+		filePath := filepath.Join(tmpDir, fmt.Sprintf("TestSaveLoadFile.%d.fastcache", i))
 		go func() {
 			defer wgSavers.Done()
 			defer os.RemoveAll(filePath)
