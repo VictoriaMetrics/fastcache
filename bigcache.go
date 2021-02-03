@@ -72,7 +72,7 @@ func (c *Cache) SetBig(k, v []byte) {
 // with values stored via other methods.
 //
 // k contents may be modified after returning from GetBig.
-func (c *Cache) GetBig(dst, k []byte) []byte {
+func (c *Cache) GetBig(dst, k []byte) (r []byte) {
 	atomic.AddUint64(&c.bigStats.GetBigCalls, 1)
 	subkey := getSubkeyBuf()
 	dstWasNil := dst == nil
