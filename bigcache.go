@@ -83,7 +83,7 @@ func (c *Cache) GetBig(dst, k []byte) (r []byte) {
 			// the caller can accurately test for a cache miss with `if r == nil`.
 			r = nil
 		}
-        }()
+	}()
 
 	// Read and parse metavalue
 	subkey.B = c.Get(subkey.B[:0], k)
