@@ -77,12 +77,12 @@ func (c *Cache) GetBig(dst, k []byte) (r []byte) {
 	subkey := getSubkeyBuf()
 	dstWasNil := dst == nil
 	defer func() {
-                putSubkeyBuf(subkey)
-                if len(r) == 0 && dstWasNil {
-                        // Guarantee that if the caller provided nil and this is a cache miss that
-                        // the caller can accurately test for a cache miss with `if r == nil`.
-                        r = nil
-                }
+		putSubkeyBuf(subkey)
+		if len(r) == 0 && dstWasNil {
+			// Guarantee that if the caller provided nil and this is a cache miss that
+			// the caller can accurately test for a cache miss with `if r == nil`.
+			r = nil
+		}
         }()
 
 	// Read and parse metavalue
