@@ -1,0 +1,14 @@
+# github.com/allegro/bigcache v1.2.1-0.20190218064605-e24eb225f156
+## explicit
+github.com/allegro/bigcache
+github.com/allegro/bigcache/queue
+# github.com/cespare/xxhash/v2 v2.1.1
+## explicit
+github.com/cespare/xxhash/v2
+# github.com/davecgh/go-spew v1.1.1
+## explicit
+# github.com/golang/snappy v0.0.3
+## explicit
+github.com/golang/snappy
+# github.com/stretchr/testify v1.3.0
+## explicit
