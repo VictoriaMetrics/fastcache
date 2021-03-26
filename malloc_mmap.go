@@ -5,8 +5,9 @@ package fastcache
 import (
 	"fmt"
 	"sync"
-	"syscall"
 	"unsafe"
+
+	syscall "golang.org/x/sys/unix"
 )
 
 const chunksPerAlloc = 1024
