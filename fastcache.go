@@ -211,6 +211,24 @@ func (c *Cache) UpdateStats(s *Stats) {
 	s.InvalidValueHashErrors += atomic.LoadUint64(&c.bigStats.InvalidValueHashErrors)
 }
 
+// VisitAllEntries calls f for all the cache entries.
+//
+// The function returns immediately if f returns non-nil error.
+// It returns the error returned by f.
+//
+// f is called sequentially for all the entries in the cache.
+// f cannot hold pointers to k and v contents after returning.
+// f cannot modify k and v contents.
+func (c *Cache) VisitAllEntries(f func(k, v []byte) error) error {
+	for _, b := range c.buckets {
+		if err := b.VisitAllEntries(f); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type bucket struct {
 	mu sync.RWMutex
 
@@ -412,4 +430,35 @@ func (b *bucket) Del(h uint64) {
 	b.mu.Lock()
 	delete(b.m, h)
 	b.mu.Unlock()
+}
+
+func (b *bucket) VisitAllEntries(f func(k, v []byte) error) error {
+	b.mu.RLock()
+	for _, v := range b.m {
+		idx := v & ((1 << bucketSizeBits) - 1)
+		gen := v >> bucketSizeBits
+
+		if gen == b.gen && idx < b.idx || gen+1 == b.gen && idx >= b.idx {
+			chunkIdx := idx / chunkSize
+			chunk := b.chunks[chunkIdx]
+
+			kvLenBuf := chunk[idx : idx+4]
+			keyLen := (uint64(kvLenBuf[0]) << 8) | uint64(kvLenBuf[1])
+			valLen := (uint64(kvLenBuf[2]) << 8) | uint64(kvLenBuf[3])
+
+			idx += 4
+			key := chunk[idx : idx+keyLen : idx+keyLen]
+
+			idx += keyLen
+			value := chunk[idx : idx+valLen : idx+valLen]
+
+			if err := f(key, value); err != nil {
+				b.mu.RUnlock()
+				return err
+			}
+		}
+	}
+	b.mu.RUnlock()
+
+	return nil
 }
