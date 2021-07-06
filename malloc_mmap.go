@@ -66,5 +66,6 @@ func clearChunks() error {
 			return err
 		}
 	}
+	baseChunks = nil
 	return nil
 }
