@@ -9,3 +9,8 @@ func getChunk() []byte {
 func putChunk(chunk []byte) {
 	// No-op.
 }
+
+func clearChunks() error {
+	// No-op.
+	return nil
+}

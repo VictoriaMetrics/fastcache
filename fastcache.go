@@ -218,6 +218,11 @@ func (c *Cache) ReloadFromFile(path string) error {
 	return err
 }
 
+func (c *Cache) Close() error {
+	c.Reset()
+	return clearChunks()
+}
+
 type bucket struct {
 	mu sync.RWMutex
 
