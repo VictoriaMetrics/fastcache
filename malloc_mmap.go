@@ -60,8 +60,7 @@ func clearChunks() error {
 	freeChunksLock.Lock()
 	defer freeChunksLock.Unlock()
 	freeChunks = nil
-	for _, data := range baseChunks {
-		baseChunk := data
+	for _, baseChunk := range baseChunks {
 		if err := unix.Munmap(baseChunk); err != nil {
 			return err
 		}
