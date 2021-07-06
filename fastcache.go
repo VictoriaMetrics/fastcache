@@ -211,6 +211,13 @@ func (c *Cache) UpdateStats(s *Stats) {
 	s.InvalidValueHashErrors += atomic.LoadUint64(&c.bigStats.InvalidValueHashErrors)
 }
 
+func (c *Cache) ReloadFromFile(path string) error {
+	c.Reset()
+	var err error
+	c, err = load(c, path, 0)
+	return err
+}
+
 type bucket struct {
 	mu sync.RWMutex
 
