@@ -1,48 +1,87 @@
-// Copyright 2009 The Go Authors. All rights reserved.
+// Copyright 2021 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//go:build arm && linux
-// +build arm,linux
+//go:build linux && ppc
+// +build linux,ppc
 
 package unix
 
 import (
+	"syscall"
 	"unsafe"
 )
 
-func setTimespec(sec, nsec int64) Timespec {
-	return Timespec{Sec: int32(sec), Nsec: int32(nsec)}
-}
+//sys	dup2(oldfd int, newfd int) (err error)
+//sysnb	EpollCreate(size int) (fd int, err error)
+//sys	EpollWait(epfd int, events []EpollEvent, msec int) (n int, err error)
+//sys	Fchown(fd int, uid int, gid int) (err error)
+//sys	Fstat(fd int, stat *Stat_t) (err error) = SYS_FSTAT64
+//sys	Fstatat(dirfd int, path string, stat *Stat_t, flags int) (err error) = SYS_FSTATAT64
+//sys	Ftruncate(fd int, length int64) (err error) = SYS_FTRUNCATE64
+//sysnb	Getegid() (egid int)
+//sysnb	Geteuid() (euid int)
+//sysnb	Getgid() (gid int)
+//sysnb	Getuid() (uid int)
+//sys	Ioperm(from int, num int, on int) (err error)
+//sys	Iopl(level int) (err error)
+//sys	Lchown(path string, uid int, gid int) (err error)
+//sys	Listen(s int, n int) (err error)
+//sys	Lstat(path string, stat *Stat_t) (err error) = SYS_LSTAT64
+//sys	Pause() (err error)
+//sys	Pread(fd int, p []byte, offset int64) (n int, err error) = SYS_PREAD64
+//sys	Pwrite(fd int, p []byte, offset int64) (n int, err error) = SYS_PWRITE64
+//sys	Renameat(olddirfd int, oldpath string, newdirfd int, newpath string) (err error)
+//sys	Select(nfd int, r *FdSet, w *FdSet, e *FdSet, timeout *Timeval) (n int, err error) = SYS__NEWSELECT
+//sys	sendfile(outfd int, infd int, offset *int64, count int) (written int, err error) = SYS_SENDFILE64
+//sys	setfsgid(gid int) (prev int, err error)
+//sys	setfsuid(uid int) (prev int, err error)
+//sysnb	Setregid(rgid int, egid int) (err error)
+//sysnb	Setresgid(rgid int, egid int, sgid int) (err error)
+//sysnb	Setresuid(ruid int, euid int, suid int) (err error)
+//sysnb	Setreuid(ruid int, euid int) (err error)
+//sys	Shutdown(fd int, how int) (err error)
+//sys	Splice(rfd int, roff *int64, wfd int, woff *int64, len int, flags int) (n int, err error)
+//sys	Stat(path string, stat *Stat_t) (err error) = SYS_STAT64
+//sys	Truncate(path string, length int64) (err error) = SYS_TRUNCATE64
+//sys	Ustat(dev int, ubuf *Ustat_t) (err error)
+//sys	accept(s int, rsa *RawSockaddrAny, addrlen *_Socklen) (fd int, err error)
+//sys	accept4(s int, rsa *RawSockaddrAny, addrlen *_Socklen, flags int) (fd int, err error)
+//sys	bind(s int, addr unsafe.Pointer, addrlen _Socklen) (err error)
+//sys	connect(s int, addr unsafe.Pointer, addrlen _Socklen) (err error)
+//sysnb	getgroups(n int, list *_Gid_t) (nn int, err error)
+//sysnb	setgroups(n int, list *_Gid_t) (err error)
+//sys	getsockopt(s int, level int, name int, val unsafe.Pointer, vallen *_Socklen) (err error)
+//sys	setsockopt(s int, level int, name int, val unsafe.Pointer, vallen uintptr) (err error)
+//sysnb	socket(domain int, typ int, proto int) (fd int, err error)
+//sysnb	socketpair(domain int, typ int, proto int, fd *[2]int32) (err error)
+//sysnb	getpeername(fd int, rsa *RawSockaddrAny, addrlen *_Socklen) (err error)
+//sysnb	getsockname(fd int, rsa *RawSockaddrAny, addrlen *_Socklen) (err error)
+//sys	recvfrom(fd int, p []byte, flags int, from *RawSockaddrAny, fromlen *_Socklen) (n int, err error)
+//sys	sendto(s int, buf []byte, flags int, to unsafe.Pointer, addrlen _Socklen) (err error)
+//sys	recvmsg(s int, msg *Msghdr, flags int) (n int, err error)
+//sys	sendmsg(s int, msg *Msghdr, flags int) (n int, err error)
 
-func setTimeval(sec, usec int64) Timeval {
-	return Timeval{Sec: int32(sec), Usec: int32(usec)}
-}
+//sys	futimesat(dirfd int, path string, times *[2]Timeval) (err error)
+//sysnb	Gettimeofday(tv *Timeval) (err error)
+//sysnb	Time(t *Time_t) (tt Time_t, err error)
+//sys	Utime(path string, buf *Utimbuf) (err error)
+//sys	utimes(path string, times *[2]Timeval) (err error)
 
-//sysnb	pipe(p *[2]_C_int) (err error)
-
-func Pipe(p []int) (err error) {
-	if len(p) != 2 {
-		return EINVAL
+func Fadvise(fd int, offset int64, length int64, advice int) (err error) {
+	_, _, e1 := Syscall6(SYS_FADVISE64_64, uintptr(fd), uintptr(advice), uintptr(offset>>32), uintptr(offset), uintptr(length>>32), uintptr(length))
+	if e1 != 0 {
+		err = errnoErr(e1)
 	}
-	var pp [2]_C_int
-	err = pipe2(&pp, 0)
-	p[0] = int(pp[0])
-	p[1] = int(pp[1])
 	return
 }
 
-//sysnb	pipe2(p *[2]_C_int, flags int) (err error)
-
-func Pipe2(p []int, flags int) (err error) {
-	if len(p) != 2 {
-		return EINVAL
-	}
-	var pp [2]_C_int
-	err = pipe2(&pp, flags)
-	p[0] = int(pp[0])
-	p[1] = int(pp[1])
-	return
+func seek(fd int, offset int64, whence int) (int64, syscall.Errno) {
+	var newoffset int64
+	offsetLow := uint32(offset & 0xffffffff)
+	offsetHigh := uint32((offset >> 32) & 0xffffffff)
+	_, _, err := Syscall6(SYS__LLSEEK, uintptr(fd), uintptr(offsetHigh), uintptr(offsetLow), uintptr(unsafe.Pointer(&newoffset)), uintptr(whence), 0)
+	return newoffset, err
 }
 
 func Seek(fd int, offset int64, whence int) (newoffset int64, err error) {
@@ -52,93 +91,6 @@ func Seek(fd int, offset int64, whence int) (newoffset int64, err error) {
 	}
 	return newoffset, nil
 }
-
-//sys	accept(s int, rsa *RawSockaddrAny, addrlen *_Socklen) (fd int, err error)
-//sys	accept4(s int, rsa *RawSockaddrAny, addrlen *_Socklen, flags int) (fd int, err error)
-//sys	bind(s int, addr unsafe.Pointer, addrlen _Socklen) (err error)
-//sys	connect(s int, addr unsafe.Pointer, addrlen _Socklen) (err error)
-//sysnb	getgroups(n int, list *_Gid_t) (nn int, err error) = SYS_GETGROUPS32
-//sysnb	setgroups(n int, list *_Gid_t) (err error) = SYS_SETGROUPS32
-//sys	getsockopt(s int, level int, name int, val unsafe.Pointer, vallen *_Socklen) (err error)
-//sys	setsockopt(s int, level int, name int, val unsafe.Pointer, vallen uintptr) (err error)
-//sysnb	socket(domain int, typ int, proto int) (fd int, err error)
-//sysnb	getpeername(fd int, rsa *RawSockaddrAny, addrlen *_Socklen) (err error)
-//sysnb	getsockname(fd int, rsa *RawSockaddrAny, addrlen *_Socklen) (err error)
-//sys	recvfrom(fd int, p []byte, flags int, from *RawSockaddrAny, fromlen *_Socklen) (n int, err error)
-//sys	sendto(s int, buf []byte, flags int, to unsafe.Pointer, addrlen _Socklen) (err error)
-//sysnb	socketpair(domain int, typ int, flags int, fd *[2]int32) (err error)
-//sys	recvmsg(s int, msg *Msghdr, flags int) (n int, err error)
-//sys	sendmsg(s int, msg *Msghdr, flags int) (n int, err error)
-
-// 64-bit file system and 32-bit uid calls
-// (16-bit uid calls are not always supported in newer kernels)
-//sys	dup2(oldfd int, newfd int) (err error)
-//sysnb	EpollCreate(size int) (fd int, err error)
-//sys	EpollWait(epfd int, events []EpollEvent, msec int) (n int, err error)
-//sys	Fchown(fd int, uid int, gid int) (err error) = SYS_FCHOWN32
-//sys	Fstat(fd int, stat *Stat_t) (err error) = SYS_FSTAT64
-//sys	Fstatat(dirfd int, path string, stat *Stat_t, flags int) (err error) = SYS_FSTATAT64
-//sysnb	Getegid() (egid int) = SYS_GETEGID32
-//sysnb	Geteuid() (euid int) = SYS_GETEUID32
-//sysnb	Getgid() (gid int) = SYS_GETGID32
-//sysnb	Getuid() (uid int) = SYS_GETUID32
-//sys	Lchown(path string, uid int, gid int) (err error) = SYS_LCHOWN32
-//sys	Listen(s int, n int) (err error)
-//sys	Lstat(path string, stat *Stat_t) (err error) = SYS_LSTAT64
-//sys	Pause() (err error)
-//sys	Renameat(olddirfd int, oldpath string, newdirfd int, newpath string) (err error)
-//sys	sendfile(outfd int, infd int, offset *int64, count int) (written int, err error) = SYS_SENDFILE64
-//sys	Select(nfd int, r *FdSet, w *FdSet, e *FdSet, timeout *Timeval) (n int, err error) = SYS__NEWSELECT
-//sys	setfsgid(gid int) (prev int, err error) = SYS_SETFSGID32
-//sys	setfsuid(uid int) (prev int, err error) = SYS_SETFSUID32
-//sysnb	Setregid(rgid int, egid int) (err error) = SYS_SETREGID32
-//sysnb	Setresgid(rgid int, egid int, sgid int) (err error) = SYS_SETRESGID32
-//sysnb	Setresuid(ruid int, euid int, suid int) (err error) = SYS_SETRESUID32
-//sysnb	Setreuid(ruid int, euid int) (err error) = SYS_SETREUID32
-//sys	Shutdown(fd int, how int) (err error)
-//sys	Splice(rfd int, roff *int64, wfd int, woff *int64, len int, flags int) (n int, err error)
-//sys	Stat(path string, stat *Stat_t) (err error) = SYS_STAT64
-//sys	Ustat(dev int, ubuf *Ustat_t) (err error)
-
-//sys	futimesat(dirfd int, path string, times *[2]Timeval) (err error)
-//sysnb	Gettimeofday(tv *Timeval) (err error)
-
-func Time(t *Time_t) (Time_t, error) {
-	var tv Timeval
-	err := Gettimeofday(&tv)
-	if err != nil {
-		return 0, err
-	}
-	if t != nil {
-		*t = Time_t(tv.Sec)
-	}
-	return Time_t(tv.Sec), nil
-}
-
-func Utime(path string, buf *Utimbuf) error {
-	tv := []Timeval{
-		{Sec: buf.Actime},
-		{Sec: buf.Modtime},
-	}
-	return Utimes(path, tv)
-}
-
-//sys	utimes(path string, times *[2]Timeval) (err error)
-
-//sys	Pread(fd int, p []byte, offset int64) (n int, err error) = SYS_PREAD64
-//sys	Pwrite(fd int, p []byte, offset int64) (n int, err error) = SYS_PWRITE64
-//sys	Truncate(path string, length int64) (err error) = SYS_TRUNCATE64
-//sys	Ftruncate(fd int, length int64) (err error) = SYS_FTRUNCATE64
-
-func Fadvise(fd int, offset int64, length int64, advice int) (err error) {
-	_, _, e1 := Syscall6(SYS_ARM_FADVISE64_64, uintptr(fd), uintptr(advice), uintptr(offset), uintptr(offset>>32), uintptr(length), uintptr(length>>32))
-	if e1 != 0 {
-		err = errnoErr(e1)
-	}
-	return
-}
-
-//sys	mmap2(addr uintptr, length uintptr, prot int, flags int, fd int, pageOffset uintptr) (xaddr uintptr, err error)
 
 func Fstatfs(fd int, buf *Statfs_t) (err error) {
 	_, _, e := Syscall(SYS_FSTATFS64, uintptr(fd), unsafe.Sizeof(*buf), uintptr(unsafe.Pointer(buf)))
@@ -160,12 +112,22 @@ func Statfs(path string, buf *Statfs_t) (err error) {
 	return
 }
 
+//sys	mmap2(addr uintptr, length uintptr, prot int, flags int, fd int, pageOffset uintptr) (xaddr uintptr, err error)
+
 func mmap(addr uintptr, length uintptr, prot int, flags int, fd int, offset int64) (xaddr uintptr, err error) {
 	page := uintptr(offset / 4096)
 	if offset != int64(page)*4096 {
 		return 0, EINVAL
 	}
 	return mmap2(addr, length, prot, flags, fd, page)
+}
+
+func setTimespec(sec, nsec int64) Timespec {
+	return Timespec{Sec: int32(sec), Nsec: int32(nsec)}
+}
+
+func setTimeval(sec, usec int64) Timeval {
+	return Timeval{Sec: int32(sec), Usec: int32(usec)}
 }
 
 type rlimit32 struct {
@@ -231,9 +193,9 @@ func Setrlimit(resource int, rlim *Rlimit) (err error) {
 	return setrlimit(resource, &rl)
 }
 
-func (r *PtraceRegs) PC() uint64 { return uint64(r.Uregs[15]) }
+func (r *PtraceRegs) PC() uint32 { return r.Nip }
 
-func (r *PtraceRegs) SetPC(pc uint64) { r.Uregs[15] = uint32(pc) }
+func (r *PtraceRegs) SetPC(pc uint32) { r.Nip = pc }
 
 func (iov *Iovec) SetLen(length int) {
 	iov.Len = uint32(length)
@@ -255,6 +217,32 @@ func (rsa *RawSockaddrNFCLLCP) SetServiceNameLen(length int) {
 	rsa.Service_name_len = uint32(length)
 }
 
+//sysnb	pipe(p *[2]_C_int) (err error)
+
+func Pipe(p []int) (err error) {
+	if len(p) != 2 {
+		return EINVAL
+	}
+	var pp [2]_C_int
+	err = pipe(&pp)
+	p[0] = int(pp[0])
+	p[1] = int(pp[1])
+	return
+}
+
+//sysnb	pipe2(p *[2]_C_int, flags int) (err error)
+
+func Pipe2(p []int, flags int) (err error) {
+	if len(p) != 2 {
+		return EINVAL
+	}
+	var pp [2]_C_int
+	err = pipe2(&pp, flags)
+	p[0] = int(pp[0])
+	p[1] = int(pp[1])
+	return
+}
+
 //sys	poll(fds *PollFd, nfds int, timeout int) (n int, err error)
 
 func Poll(fds []PollFd, timeout int) (n int, err error) {
@@ -264,12 +252,12 @@ func Poll(fds []PollFd, timeout int) (n int, err error) {
 	return poll(&fds[0], len(fds), timeout)
 }
 
-//sys	armSyncFileRange(fd int, flags int, off int64, n int64) (err error) = SYS_ARM_SYNC_FILE_RANGE
+//sys	syncFileRange2(fd int, flags int, off int64, n int64) (err error) = SYS_SYNC_FILE_RANGE2
 
 func SyncFileRange(fd int, off int64, n int64, flags int) error {
-	// The sync_file_range and arm_sync_file_range syscalls differ only in the
+	// The sync_file_range and sync_file_range2 syscalls differ only in the
 	// order of their arguments.
-	return armSyncFileRange(fd, flags, off, n)
+	return syncFileRange2(fd, flags, off, n)
 }
 
 //sys	kexecFileLoad(kernelFd int, initrdFd int, cmdlineLen int, cmdline string, flags int) (err error)
