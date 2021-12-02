@@ -112,7 +112,10 @@ func TestCacheWrap(t *testing.T) {
 		t.Fatalf("unexpected number of items; got %d; cannot be smaller than %d", s.EntriesCount, calls/5)
 	}
 	if s.BytesSize < 1024 {
-		t.Fatalf("unexpected number of bytesSize; got %d; cannot be smaller than %d", s.BytesSize, 1024)
+		t.Fatalf("unexpected BytesSize; got %d; cannot be smaller than %d", s.BytesSize, 1024)
+	}
+	if s.MaxBytesSize < 32*1024*1024 {
+		t.Fatalf("unexpected MaxBytesSize; got %d; cannot be smaller than %d", s.MaxBytesSize, 32*1024*1024)
 	}
 }
 
