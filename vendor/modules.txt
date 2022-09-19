@@ -5,6 +5,5 @@ github.com/allegro/bigcache/queue
 github.com/cespare/xxhash/v2
 # github.com/golang/snappy v0.0.4
 github.com/golang/snappy
-# golang.org/x/sys v0.0.0-20220405052023-b1e9470b6e64
-golang.org/x/sys/internal/unsafeheader
+# golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8
 golang.org/x/sys/unix
