@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"runtime"
 
-	"github.com/klauspost/compress/s2"
+	"github.com/golang/snappy"
 )
 
 // SaveToFile atomically saves cache data to the given filePath using a single
@@ -232,7 +232,7 @@ func saveBuckets(buckets []bucket, workCh <-chan int, dir string, workerNum int)
 	defer func() {
 		_ = dataFile.Close()
 	}()
-	zw := s2.NewWriter(dataFile)
+	zw := snappy.NewBufferedWriter(dataFile)
 	for bucketNum := range workCh {
 		if err := writeUint64(zw, uint64(bucketNum)); err != nil {
 			return fmt.Errorf("cannot write bucketNum=%d to %q: %s", bucketNum, dataPath, err)
@@ -242,7 +242,7 @@ func saveBuckets(buckets []bucket, workCh <-chan int, dir string, workerNum int)
 		}
 	}
 	if err := zw.Close(); err != nil {
-		return fmt.Errorf("cannot close s2.Writer for %q: %s", dataPath, err)
+		return fmt.Errorf("cannot close snappy.Writer for %q: %s", dataPath, err)
 	}
 	return nil
 }
@@ -255,7 +255,7 @@ func loadBuckets(buckets []bucket, dataPath string, maxChunks uint64) error {
 	defer func() {
 		_ = dataFile.Close()
 	}()
-	zr := s2.NewReader(dataFile)
+	zr := snappy.NewReader(dataFile)
 	for {
 		bucketNum, err := readUint64(zr)
 		if err == io.EOF {

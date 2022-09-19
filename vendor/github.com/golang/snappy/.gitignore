@@ -1,3 +1,4 @@
+cmd/snappytool/snappytool
 testdata/bench
 
 # These explicitly listed benchmark data files are for an obsolete version of
