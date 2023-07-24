@@ -5,11 +5,12 @@ package fastcache
 
 import (
 	"fmt"
+	xxhash "github.com/cespare/xxhash/v2"
 	"sync"
 	"sync/atomic"
-
-	xxhash "github.com/cespare/xxhash/v2"
 )
+
+const setBufSize = 32 * 1024
 
 const bucketsCount = 512
 
@@ -221,6 +222,7 @@ type bucket struct {
 	// It consists of 64KB chunks.
 	chunks [][]byte
 
+	setBuf chan *[][]byte
 	// m maps hash(k) to idx of (k, v) pair in chunks.
 	m map[uint64]uint64
 
@@ -248,6 +250,18 @@ func (b *bucket) Init(maxBytes uint64) {
 	b.chunks = make([][]byte, maxChunks)
 	b.m = make(map[uint64]uint64)
 	b.Reset()
+	/*b.setBuf = make(chan *[][]byte, setBufSize)
+	go func() {
+		var firstTimeTimestamp int64
+		for {
+			select {
+			case i := <-b.setBuf:
+				if firstTimeTimestamp == 0 {
+					firstTimeTimestamp = time.Now().UnixMilli()
+				}
+			}
+		}
+	}()*/
 }
 
 func (b *bucket) Reset() {
@@ -300,7 +314,7 @@ func (b *bucket) UpdateStats(s *Stats) {
 	b.mu.RUnlock()
 }
 
-func (b *bucket) Set(k, v []byte, h uint64) {
+func (b *bucket) set(k, v []byte, h uint64) {
 	atomic.AddUint64(&b.setCalls, 1)
 	if len(k) >= (1<<16) || len(v) >= (1<<16) {
 		// Too big key or value - its length cannot be encoded
@@ -321,7 +335,6 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 
 	chunks := b.chunks
 	needClean := false
-	b.mu.Lock()
 	idx := b.idx
 	idxNew := idx + kvLen
 	chunkIdx := idx / chunkSize
@@ -357,6 +370,11 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 	if needClean {
 		b.cleanLocked()
 	}
+}
+
+func (b *bucket) Set(k, v []byte, h uint64) {
+	b.mu.Lock()
+	b.set(k, v, h)
 	b.mu.Unlock()
 }
 
