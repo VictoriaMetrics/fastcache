@@ -257,8 +257,8 @@ func (b *bucket) Init(maxBytes uint64) {
 	go func() {
 		t := time.Tick(time.Millisecond)
 		var firstTimeTimestamp int64
-		keys := make([][]byte, 0, 1000)
-		values := make([][]byte, 0, 1000)
+		keys := make([][]byte, 0, 64)
+		values := make([][]byte, 0, 64)
 		for {
 			select {
 			case i := <-b.setBuf:
@@ -267,18 +267,12 @@ func (b *bucket) Init(maxBytes uint64) {
 				}
 				keys = append(keys, i.K)
 				values = append(values, i.V)
-				if len(keys) >= writeSizeThreshold || time.Since(time.UnixMilli(firstTimeTimestamp)).Milliseconds() >= maxDelayMillis {
-					b.setBatch(keys, values)
-					firstTimeTimestamp = 0
-					keys = make([][]byte, 0, 1000)
-					values = make([][]byte, 0, 1000)
-				}
 			case _ = <-t:
-				if len(keys) >= writeSizeThreshold || (firstTimeTimestamp != 0 && time.Since(time.UnixMilli(firstTimeTimestamp)).Milliseconds() >= maxDelayMillis) {
+				if firstTimeTimestamp != 0 && (len(keys) >= writeSizeThreshold || time.Since(time.UnixMilli(firstTimeTimestamp)).Milliseconds() >= maxDelayMillis) {
 					b.setBatch(keys, values)
 					firstTimeTimestamp = 0
-					keys = make([][]byte, 0, 1000)
-					values = make([][]byte, 0, 1000)
+					keys = make([][]byte, 0, 64)
+					values = make([][]byte, 0, 64)
 				}
 			}
 		}
