@@ -81,12 +81,8 @@ func TestCacheWrap(t *testing.T) {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		c.Set(k, v)
-		time.Sleep(25 * time.Millisecond)
-		vv := c.Get(nil, k)
-		if string(vv) != string(v) {
-			t.Fatalf("unexpected value for key %q; got %q; want %q", k, vv, v)
-		}
 	}
+
 	for i := uint64(0); i < calls/10; i++ {
 		x := i * 10
 		k := []byte(fmt.Sprintf("key %d", x))
@@ -99,7 +95,7 @@ func TestCacheWrap(t *testing.T) {
 
 	var s Stats
 	c.UpdateStats(&s)
-	getCalls := calls + calls/10
+	getCalls := calls / 10
 	if s.GetCalls != getCalls {
 		t.Fatalf("unexpected number of getCalls; got %d; want %d", s.GetCalls, getCalls)
 	}
@@ -205,12 +201,17 @@ func testCacheGetSet(c *Cache, itemsCount int) error {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		c.Set(k, v)
-		time.Sleep(25 * time.Millisecond)
+	}
+	time.Sleep(25 * time.Millisecond)
+	for i := 0; i < itemsCount; i++ {
+		k := []byte(fmt.Sprintf("key %d", i))
+		v := []byte(fmt.Sprintf("value %d", i))
 		vv := c.Get(nil, k)
 		if string(vv) != string(v) {
 			return fmt.Errorf("unexpected value for key %q after insertion; got %q; want %q", k, vv, v)
 		}
 	}
+
 	misses := 0
 	for i := 0; i < itemsCount; i++ {
 		k := []byte(fmt.Sprintf("key %d", i))

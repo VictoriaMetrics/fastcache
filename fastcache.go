@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-const setBufSize = 1024
-const writeSizeThreshold = 25
+const setBufSize = 4 * 1024
+const writeSizeThreshold = 250
 const maxDelayMillis = 5
 
 const bucketsCount = 512
@@ -397,7 +397,7 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 func (b *bucket) setBatch(k, v [][]byte) {
 	b.mu.Lock()
 	for i := 0; i < len(k); i++ {
-		b.set(k[0], v[0], xxhash.Sum64(k[0]))
+		b.set(k[i], v[i], xxhash.Sum64(k[i]))
 	}
 	b.mu.Unlock()
 }
