@@ -1,4 +1,4 @@
-module github.com/VictoriaMetrics/fastcache
+module github.com/andectionsharechat/fastcache
 
 go 1.13
 
