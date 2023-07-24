@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestSaveLoadSmall(t *testing.T) {
@@ -23,6 +24,7 @@ func TestSaveLoadSmall(t *testing.T) {
 	key := []byte("foobar")
 	value := []byte("abcdef")
 	c.Set(key, value)
+	time.Sleep(10 * time.Millisecond)
 	if err := c.SaveToFile(filePath); err != nil {
 		t.Fatalf("SaveToFile error: %s", err)
 	}
@@ -39,6 +41,7 @@ func TestSaveLoadSmall(t *testing.T) {
 	// Verify that key can be overwritten.
 	newValue := []byte("234fdfd")
 	c1.Set(key, newValue)
+	time.Sleep(10 * time.Millisecond)
 	vv = c1.Get(nil, key)
 	if string(vv) != string(newValue) {
 		t.Fatalf("unexpected new value obtained from cache; got %q; want %q", vv, newValue)
@@ -194,6 +197,7 @@ func TestSaveLoadConcurrent(t *testing.T) {
 				k := []byte(fmt.Sprintf("key %d", j))
 				v := []byte(fmt.Sprintf("value %d", j))
 				c.Set(k, v)
+				time.Sleep(10 * time.Millisecond)
 				buf = c.Get(buf[:0], k)
 				if string(buf) != string(v) {
 					panic(fmt.Errorf("unexpected value for key %q; got %q; want %q", k, buf, v))

@@ -8,9 +8,12 @@ import (
 	xxhash "github.com/cespare/xxhash/v2"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
-const setBufSize = 32 * 1024
+const setBufSize = 1024
+const writeSizeThreshold = 25
+const maxDelayMillis = 5
 
 const bucketsCount = 512
 
@@ -222,7 +225,7 @@ type bucket struct {
 	// It consists of 64KB chunks.
 	chunks [][]byte
 
-	setBuf chan *[][]byte
+	setBuf chan *insertValue
 	// m maps hash(k) to idx of (k, v) pair in chunks.
 	m map[uint64]uint64
 
@@ -250,18 +253,36 @@ func (b *bucket) Init(maxBytes uint64) {
 	b.chunks = make([][]byte, maxChunks)
 	b.m = make(map[uint64]uint64)
 	b.Reset()
-	/*b.setBuf = make(chan *[][]byte, setBufSize)
+	b.setBuf = make(chan *insertValue, setBufSize)
 	go func() {
+		t := time.Tick(time.Millisecond)
 		var firstTimeTimestamp int64
+		keys := make([][]byte, 0, 1000)
+		values := make([][]byte, 0, 1000)
 		for {
 			select {
 			case i := <-b.setBuf:
 				if firstTimeTimestamp == 0 {
 					firstTimeTimestamp = time.Now().UnixMilli()
 				}
+				keys = append(keys, i.K)
+				values = append(values, i.V)
+				if len(keys) >= writeSizeThreshold || time.Since(time.UnixMilli(firstTimeTimestamp)).Milliseconds() >= maxDelayMillis {
+					b.setBatch(keys, values)
+					firstTimeTimestamp = 0
+					keys = make([][]byte, 0, 1000)
+					values = make([][]byte, 0, 1000)
+				}
+			case _ = <-t:
+				if len(keys) >= writeSizeThreshold || (firstTimeTimestamp != 0 && time.Since(time.UnixMilli(firstTimeTimestamp)).Milliseconds() >= maxDelayMillis) {
+					b.setBatch(keys, values)
+					firstTimeTimestamp = 0
+					keys = make([][]byte, 0, 1000)
+					values = make([][]byte, 0, 1000)
+				}
 			}
 		}
-	}()*/
+	}()
 }
 
 func (b *bucket) Reset() {
@@ -373,8 +394,17 @@ func (b *bucket) set(k, v []byte, h uint64) {
 }
 
 func (b *bucket) Set(k, v []byte, h uint64) {
+	b.setBuf <- &insertValue{
+		K: k,
+		V: v,
+	}
+}
+
+func (b *bucket) setBatch(k, v [][]byte) {
 	b.mu.Lock()
-	b.set(k, v, h)
+	for i := 0; i < len(k); i++ {
+		b.set(k[0], v[0], xxhash.Sum64(k[0]))
+	}
 	b.mu.Unlock()
 }
 
@@ -434,4 +464,8 @@ func (b *bucket) Del(h uint64) {
 	b.mu.Lock()
 	delete(b.m, h)
 	b.mu.Unlock()
+}
+
+type insertValue struct {
+	K, V []byte
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestSetGetBig(t *testing.T) {
@@ -25,6 +26,7 @@ func testSetGetBig(t *testing.T, c *Cache, valueSize, valuesCount, seed int) {
 		key := []byte(fmt.Sprintf("key %d", i))
 		value := createValue(valueSize, seed)
 		c.SetBig(key, value)
+		time.Sleep(10 * time.Millisecond)
 		m[string(key)] = value
 		buf = c.GetBig(buf[:0], key)
 		if !bytes.Equal(buf, value) {

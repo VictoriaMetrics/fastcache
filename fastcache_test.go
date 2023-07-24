@@ -20,6 +20,7 @@ func TestCacheSmall(t *testing.T) {
 	}
 
 	c.Set([]byte("key"), []byte("value"))
+	time.Sleep(10 * time.Millisecond)
 	if v := c.Get(nil, []byte("key")); string(v) != "value" {
 		t.Fatalf("unexpected value obtained; got %q; want %q", v, "value")
 	}
@@ -34,6 +35,7 @@ func TestCacheSmall(t *testing.T) {
 	}
 
 	c.Set([]byte("aaa"), []byte("bbb"))
+	time.Sleep(10 * time.Millisecond)
 	if v := c.Get(nil, []byte("aaa")); string(v) != "bbb" {
 		t.Fatalf("unexpected value obtained; got %q; want %q", v, "bbb")
 	}
@@ -52,6 +54,7 @@ func TestCacheSmall(t *testing.T) {
 	// Test empty value
 	k := []byte("empty")
 	c.Set(k, nil)
+	time.Sleep(10 * time.Millisecond)
 	if v := c.Get(nil, k); len(v) != 0 {
 		t.Fatalf("unexpected non-empty value obtained from empty entry: %q", v)
 	}
@@ -78,6 +81,7 @@ func TestCacheWrap(t *testing.T) {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		c.Set(k, v)
+		time.Sleep(10 * time.Millisecond)
 		vv := c.Get(nil, k)
 		if string(vv) != string(v) {
 			t.Fatalf("unexpected value for key %q; got %q; want %q", k, vv, v)
@@ -126,6 +130,8 @@ func TestCacheDel(t *testing.T) {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		c.Set(k, v)
+
+		time.Sleep(10 * time.Millisecond)
 		vv := c.Get(nil, k)
 		if string(vv) != string(v) {
 			t.Fatalf("unexpected value for key %q; got %q; want %q", k, vv, v)
@@ -199,6 +205,7 @@ func testCacheGetSet(c *Cache, itemsCount int) error {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		c.Set(k, v)
+		time.Sleep(10 * time.Millisecond)
 		vv := c.Get(nil, k)
 		if string(vv) != string(v) {
 			return fmt.Errorf("unexpected value for key %q after insertion; got %q; want %q", k, vv, v)
@@ -209,6 +216,7 @@ func testCacheGetSet(c *Cache, itemsCount int) error {
 		k := []byte(fmt.Sprintf("key %d", i))
 		vExpected := fmt.Sprintf("value %d", i)
 		v := c.Get(nil, k)
+		time.Sleep(10 * time.Millisecond)
 		if string(v) != string(vExpected) {
 			if len(v) > 0 {
 				return fmt.Errorf("unexpected value for key %q after all insertions; got %q; want %q", k, v, vExpected)
@@ -274,6 +282,7 @@ func TestCacheResetUpdateStatsSetConcurrent(t *testing.T) {
 				key := []byte(fmt.Sprintf("key_%d", j))
 				value := []byte(fmt.Sprintf("value_%d", j))
 				c.Set(key, value)
+				time.Sleep(10 * time.Millisecond)
 				runtime.Gosched()
 			}
 		}()

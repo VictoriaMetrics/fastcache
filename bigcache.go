@@ -3,6 +3,7 @@ package fastcache
 import (
 	"sync"
 	"sync/atomic"
+	"time"
 
 	xxhash "github.com/cespare/xxhash/v2"
 )
@@ -56,6 +57,7 @@ func (c *Cache) SetBig(k, v []byte) {
 		subvalue := v[:subvalueLen]
 		v = v[subvalueLen:]
 		c.Set(subkey.B, subvalue)
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	// Write metavalue, which consists of valueHash and valueLen.
