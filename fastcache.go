@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
-const setBufSize = 4 * 1024
+const setBufSize = 32 * 1024
 const writeSizeThreshold = 250
-const maxDelayMillis = 5
+const maxDelayMillis = 3
 
 const bucketsCount = 512
 
