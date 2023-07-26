@@ -12,10 +12,10 @@ import (
 )
 
 const setBufSize = 32 * 1024
-const writeSizeThreshold = 250
-const maxDelayMillis = 3
+const writeSizeThreshold = 1000
+const maxDelayMillis = 5
 
-const bucketsCount = 512
+const bucketsCount = 1024
 
 const chunkSize = 64 * 1024
 
