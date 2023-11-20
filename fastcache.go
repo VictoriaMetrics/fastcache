@@ -155,7 +155,13 @@ func (c *Cache) Set(k, v []byte) {
 func (c *Cache) LoadOrSet(dst, k, v []byte) ([]byte, bool) {
 	h := xxhash.Sum64(k)
 	idx := h % bucketsCount
-	return c.buckets[idx].LoadOrSet(dst, k, v, h, true)
+	// try HasGet firstly to avoid rwLock
+	ret, found := c.HasGet(dst, k)
+	if found {
+		return ret, found
+	} else {
+		return c.buckets[idx].LoadOrSet(dst, k, v, h, true)
+	}
 }
 
 // Get appends value by the key k to dst and returns the result.
