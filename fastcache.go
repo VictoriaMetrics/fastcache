@@ -58,6 +58,9 @@ type Stats struct {
 
 	// BigStats contains stats for GetBig/SetBig methods.
 	BigStats
+
+	// TTLStats contains stats for GetWithTTL/SetWithTTL methods.
+	TTLStats
 }
 
 // Reset resets s, so it may be re-used again in Cache.UpdateStats.
@@ -111,6 +114,10 @@ func (bs *BigStats) reset() {
 type Cache struct {
 	buckets [bucketsCount]bucket
 
+	ttlmu    sync.RWMutex
+	ttl      map[uint64]int64
+	ttlgc    sync.Once
+	ttlStats TTLStats
 	bigStats BigStats
 }
 
@@ -124,11 +131,14 @@ func New(maxBytes int) *Cache {
 	if maxBytes <= 0 {
 		panic(fmt.Errorf("maxBytes must be greater than 0; got %d", maxBytes))
 	}
-	var c Cache
+	var c = Cache{
+		ttl: make(map[uint64]int64),
+	}
 	maxBucketBytes := uint64((maxBytes + bucketsCount - 1) / bucketsCount)
 	for i := range c.buckets[:] {
 		c.buckets[i].Init(maxBucketBytes)
 	}
+	c.runTTLGC()
 	return &c
 }
 
@@ -147,6 +157,10 @@ func New(maxBytes int) *Cache {
 // k and v contents may be modified after returning from Set.
 func (c *Cache) Set(k, v []byte) {
 	h := xxhash.Sum64(k)
+	c.setWithHash(k, v, h)
+}
+
+func (c *Cache) setWithHash(k, v []byte, h uint64) {
 	idx := h % bucketsCount
 	c.buckets[idx].Set(k, v, h)
 }
@@ -160,6 +174,10 @@ func (c *Cache) Set(k, v []byte) {
 // k contents may be modified after returning from Get.
 func (c *Cache) Get(dst, k []byte) []byte {
 	h := xxhash.Sum64(k)
+	return c.getWithHash(dst, k, h)
+}
+
+func (c *Cache) getWithHash(dst, k []byte, h uint64) []byte {
 	idx := h % bucketsCount
 	dst, _ = c.buckets[idx].Get(dst, k, h, true)
 	return dst
@@ -206,12 +224,17 @@ func (c *Cache) UpdateStats(s *Stats) {
 	for i := range c.buckets[:] {
 		c.buckets[i].UpdateStats(s)
 	}
+
 	s.GetBigCalls += atomic.LoadUint64(&c.bigStats.GetBigCalls)
 	s.SetBigCalls += atomic.LoadUint64(&c.bigStats.SetBigCalls)
 	s.TooBigKeyErrors += atomic.LoadUint64(&c.bigStats.TooBigKeyErrors)
 	s.InvalidMetavalueErrors += atomic.LoadUint64(&c.bigStats.InvalidMetavalueErrors)
 	s.InvalidValueLenErrors += atomic.LoadUint64(&c.bigStats.InvalidValueLenErrors)
 	s.InvalidValueHashErrors += atomic.LoadUint64(&c.bigStats.InvalidValueHashErrors)
+
+	s.GetWithTTLCalls += atomic.LoadUint64(&c.ttlStats.GetWithTTLCalls)
+	s.SetWithTTLCalls += atomic.LoadUint64(&c.ttlStats.SetWithTTLCalls)
+	s.MissesWithTTL += atomic.LoadUint64(&c.ttlStats.MissesWithTTL)
 }
 
 type bucket struct {
