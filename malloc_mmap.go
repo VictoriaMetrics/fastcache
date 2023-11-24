@@ -14,7 +14,10 @@ import (
 const chunksPerAlloc = 1024
 
 var (
-	freeChunks     []*[chunkSize]byte
+	// chunks to hand out to the library
+	freeChunks []*[chunkSize]byte
+	// orignal slice from Mmap for book-keeping
+	baseChunks     [][]byte
 	freeChunksLock sync.Mutex
 )
 
@@ -27,6 +30,7 @@ func getChunk() []byte {
 		if err != nil {
 			panic(fmt.Errorf("cannot allocate %d bytes via mmap: %s", chunkSize*chunksPerAlloc, err))
 		}
+		baseChunks = append(baseChunks, data)
 		for len(data) > 0 {
 			p := (*[chunkSize]byte)(unsafe.Pointer(&data[0]))
 			freeChunks = append(freeChunks, p)
@@ -51,4 +55,17 @@ func putChunk(chunk []byte) {
 	freeChunksLock.Lock()
 	freeChunks = append(freeChunks, p)
 	freeChunksLock.Unlock()
+}
+
+func clearChunks() error {
+	freeChunksLock.Lock()
+	defer freeChunksLock.Unlock()
+	freeChunks = nil
+	for _, baseChunk := range baseChunks {
+		if err := unix.Munmap(baseChunk); err != nil {
+			return err
+		}
+	}
+	baseChunks = nil
+	return nil
 }
