@@ -307,7 +307,7 @@ func (b *bucket) UpdateStats(s *Stats) {
 	s.EntriesCount += uint64(len(b.m))
 	bytesSize := uint64(0)
 	for _, chunk := range b.chunks {
-		bytesSize += uint64(cap(chunk))
+		bytesSize += uint64(len(chunk))
 	}
 	s.BytesSize += bytesSize
 	s.MaxBytesSize += uint64(len(b.chunks)) * chunkSize
