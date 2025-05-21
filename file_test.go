@@ -1,6 +1,7 @@
 package fastcache
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -42,6 +43,19 @@ func TestSaveLoadSmall(t *testing.T) {
 	vv = c1.Get(nil, key)
 	if string(vv) != string(newValue) {
 		t.Fatalf("unexpected new value obtained from cache; got %q; want %q", vv, newValue)
+	}
+}
+
+func TestLoadFileNotExist(t *testing.T) {
+	c, err := LoadFromFile(`non-existing-file`)
+	if err == nil {
+		t.Fatalf("LoadFromFile must return error; got nil")
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("LoadFromFile must return os.ErrNotExist; got: %s", err)
+	}
+	if c != nil {
+		t.Fatalf("LoadFromFile must return nil cache")
 	}
 }
 
