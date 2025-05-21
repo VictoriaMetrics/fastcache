@@ -79,8 +79,8 @@ func (c *Cache) SaveToFileConcurrent(filePath string, concurrency int) error {
 // LoadFromFile loads cache data from the given filePath.
 //
 // See SaveToFile* for saving cache data to file.
-func LoadFromFile(filePath string) (*Cache, error) {
-	return load(filePath, 0)
+func LoadFromFile(filePath string, maxBytes int) (*Cache, error) {
+	return load(filePath, maxBytes)
 }
 
 // LoadFromFileOrNew tries loading cache data from the given filePath.
