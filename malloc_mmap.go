@@ -1,5 +1,5 @@
-//go:build !appengine && !windows
-// +build !appengine,!windows
+//go:build !appengine && !windows && !js
+// +build !appengine,!windows,!js
 
 package fastcache
 
