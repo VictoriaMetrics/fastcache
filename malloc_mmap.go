@@ -1,5 +1,5 @@
-//go:build !appengine && !windows
-// +build !appengine,!windows
+//go:build !appengine && !windows && !wasm && !tinygo.wasm
+// +build !appengine,!windows,!wasm,!tinygo.wasm
 
 package fastcache
 
