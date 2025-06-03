@@ -28,7 +28,7 @@ func TestSaveLoadSmall(t *testing.T) {
 		t.Fatalf("SaveToFile error: %s", err)
 	}
 
-	c1, err := LoadFromFile(filePath, 0)
+	c1, err := LoadFromFile(filePath)
 	if err != nil {
 		t.Fatalf("LoadFromFile error: %s", err)
 	}
@@ -47,7 +47,7 @@ func TestSaveLoadSmall(t *testing.T) {
 }
 
 func TestLoadFileNotExist(t *testing.T) {
-	c, err := LoadFromFile(`non-existing-file`, 0)
+	c, err := LoadFromFile(`non-existing-file`)
 	if err == nil {
 		t.Fatalf("LoadFromFile must return error; got nil")
 	}
@@ -105,7 +105,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	c.Reset()
 
 	// Verify LoadFromFile
-	c, err = LoadFromFile(filePath, 0)
+	c, err = LoadFromFile(filePath)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -240,7 +240,7 @@ func TestSaveLoadConcurrent(t *testing.T) {
 				if err := c.SaveToFileConcurrent(filePath, 3); err != nil {
 					panic(fmt.Errorf("cannot save cache to %q: %s", filePath, err))
 				}
-				cc, err := LoadFromFile(filePath, 0)
+				cc, err := LoadFromFile(filePath)
 				if err != nil {
 					panic(fmt.Errorf("cannot load cache from %q: %s", filePath, err))
 				}

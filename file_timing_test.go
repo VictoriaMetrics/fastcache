@@ -51,7 +51,7 @@ func benchmarkLoadFromFile(b *testing.B, concurrency int) {
 	b.ResetTimer()
 	b.SetBytes(benchCacheSize)
 	for i := 0; i < b.N; i++ {
-		c, err := LoadFromFile(filePath, 0)
+		c, err := LoadFromFile(filePath)
 		if err != nil {
 			b.Fatalf("cannot load cache from file: %s", err)
 		}
