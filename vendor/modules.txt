@@ -1,10 +1,17 @@
 # github.com/allegro/bigcache v1.2.1-0.20190218064605-e24eb225f156
+## explicit
 github.com/allegro/bigcache
 github.com/allegro/bigcache/queue
-# github.com/cespare/xxhash/v2 v2.1.1
+# github.com/cespare/xxhash/v2 v2.3.0
+## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/golang/snappy v0.0.3
+# github.com/davecgh/go-spew v1.1.1
+## explicit
+# github.com/golang/snappy v1.0.0
+## explicit
 github.com/golang/snappy
-# golang.org/x/sys v0.0.0-20210324051608-47abb6519492
-golang.org/x/sys/internal/unsafeheader
+# github.com/stretchr/testify v1.3.0
+## explicit
+# golang.org/x/sys v0.34.0
+## explicit; go 1.23.0
 golang.org/x/sys/unix

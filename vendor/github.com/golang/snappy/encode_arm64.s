@@ -27,7 +27,7 @@
 // The unusual register allocation of local variables, such as R10 for the
 // source pointer, matches the allocation used at the call site in encodeBlock,
 // which makes it easier to manually inline this function.
-TEXT ·emitLiteral(SB), NOSPLIT, $32-56
+TEXT ·emitLiteral(SB), NOSPLIT, $40-56
 	MOVD dst_base+0(FP), R8
 	MOVD lit_base+24(FP), R10
 	MOVD lit_len+32(FP), R3
@@ -261,7 +261,7 @@ extendMatchEnd:
 // "var table [maxTableSize]uint16" takes up 32768 bytes of stack space. An
 // extra 64 bytes, to call other functions, and an extra 64 bytes, to spill
 // local variables (registers) during calls gives 32768 + 64 + 64 = 32896.
-TEXT ·encodeBlock(SB), 0, $32896-56
+TEXT ·encodeBlock(SB), 0, $32904-56
 	MOVD dst_base+0(FP), R8
 	MOVD src_base+24(FP), R7
 	MOVD src_len+32(FP), R14
@@ -382,7 +382,7 @@ inner0:
 
 	// if load32(src, s) != load32(src, candidate) { continue } break
 	MOVW 0(R7), R3
-	MOVW (R6)(R15*1), R4
+	MOVW (R6)(R15), R4
 	CMPW R4, R3
 	BNE  inner0
 
@@ -672,7 +672,7 @@ inlineEmitCopyEnd:
 	MOVHU R3, 0(R17)(R11<<1)
 
 	// if uint32(x>>8) == load32(src, candidate) { continue }
-	MOVW (R6)(R15*1), R4
+	MOVW (R6)(R15), R4
 	CMPW R4, R14
 	BEQ  inner1
 
