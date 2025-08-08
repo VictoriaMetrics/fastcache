@@ -30,6 +30,8 @@ func getChunk() []byte {
 		if err != nil {
 			panic(fmt.Errorf("cannot allocate %d bytes via mmap: %s", chunkSize*chunksPerAlloc, err))
 		}
+		// Since we're dodging the garbage collector, that means we need to keep track of the memory
+		// chunks that are doing so, in order to gracefully deallocate them in the end
 		baseChunks = append(baseChunks, data)
 		for len(data) > 0 {
 			p := (*[chunkSize]byte)(unsafe.Pointer(&data[0]))
