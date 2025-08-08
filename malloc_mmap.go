@@ -1,3 +1,4 @@
+//go:build !appengine && !windows
 // +build !appengine,!windows
 
 package fastcache
@@ -15,7 +16,7 @@ const chunksPerAlloc = 1024
 var (
 	// chunks to hand out to the library
 	freeChunks []*[chunkSize]byte
-	// orignal slice from Mmap for book-keeping
+	// original slice from Mmap for book-keeping
 	baseChunks     [][]byte
 	freeChunksLock sync.Mutex
 )

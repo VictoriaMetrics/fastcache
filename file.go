@@ -80,7 +80,7 @@ func (c *Cache) SaveToFileConcurrent(filePath string, concurrency int) error {
 //
 // See SaveToFile* for saving cache data to file.
 func LoadFromFile(filePath string) (*Cache, error) {
-	return load(nil, filePath, 0)
+	return load(filePath, 0)
 }
 
 // LoadFromFileOrNew tries loading cache data from the given filePath.
@@ -88,7 +88,7 @@ func LoadFromFile(filePath string) (*Cache, error) {
 // The function falls back to creating new cache with the given maxBytes
 // capacity if error occurs during loading the cache from file.
 func LoadFromFileOrNew(filePath string, maxBytes int) *Cache {
-	c, err := load(nil, filePath, maxBytes)
+	c, err := load(filePath, maxBytes)
 	if err == nil {
 		return c
 	}
@@ -125,7 +125,7 @@ func (c *Cache) save(dir string, workersCount int) error {
 	return err
 }
 
-func load(oldCache *Cache, filePath string, maxBytes int) (*Cache, error) {
+func load(filePath string, maxBytes int) (*Cache, error) {
 	maxBucketChunks, err := loadMetadata(filePath)
 	if err != nil {
 		return nil, err
@@ -152,12 +152,7 @@ func load(oldCache *Cache, filePath string, maxBytes int) (*Cache, error) {
 	}
 	results := make(chan error)
 	workersCount := 0
-	var c *Cache
-	if oldCache != nil {
-		c = oldCache
-	} else {
-		c = &Cache{}
-	}
+	var c Cache
 	for _, fi := range fis {
 		fn := fi.Name()
 		if fi.IsDir() || !dataFileRegexp.MatchString(fn) {
@@ -188,7 +183,7 @@ func load(oldCache *Cache, filePath string, maxBytes int) (*Cache, error) {
 			b.m = make(map[uint64]uint64)
 		}
 	}
-	return c, nil
+	return &c, nil
 }
 
 func saveMetadata(c *Cache, dir string) error {
