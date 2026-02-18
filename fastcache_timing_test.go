@@ -418,3 +418,27 @@ func BenchmarkSyncMapSetGet(b *testing.B) {
 		}
 	})
 }
+
+func BenchmarkCache_VisitAllEntries(b *testing.B) {
+	itemsCount := 10000
+	c := New(30 * itemsCount)
+	defer c.Reset()
+
+	b.ReportAllocs()
+	b.SetBytes(int64(itemsCount))
+
+	data := make(map[string][]byte)
+
+	for i := 0; i < itemsCount; i++ {
+		k := []byte(fmt.Sprintf("key %d", i))
+		v := []byte(fmt.Sprintf("value %d", i))
+		c.Set(k, v)
+		data[string(k)] = v
+	}
+
+	for n := 0; n < b.N; n++ {
+		_ = c.VisitAllEntries(func(k, v []byte) error {
+			return nil
+		})
+	}
+}
