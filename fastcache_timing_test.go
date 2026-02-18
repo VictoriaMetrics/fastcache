@@ -25,7 +25,7 @@ func BenchmarkBigCacheSet(b *testing.B) {
 		k := []byte("\x00\x00\x00\x00")
 		v := []byte("xyza")
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -49,7 +49,7 @@ func BenchmarkBigCacheGet(b *testing.B) {
 	defer c.Close()
 	k := []byte("\x00\x00\x00\x00")
 	v := []byte("xyza")
-	for i := 0; i < items; i++ {
+	for range items {
 		k[0]++
 		if k[0] == 0 {
 			k[1]++
@@ -64,7 +64,7 @@ func BenchmarkBigCacheGet(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		k := []byte("\x00\x00\x00\x00")
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -96,7 +96,7 @@ func BenchmarkBigCacheSetGet(b *testing.B) {
 		k := []byte("\x00\x00\x00\x00")
 		v := []byte("xyza")
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -105,7 +105,7 @@ func BenchmarkBigCacheSetGet(b *testing.B) {
 					panic(fmt.Errorf("unexpected error: %s", err))
 				}
 			}
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -136,7 +136,7 @@ func BenchmarkCacheSet(b *testing.B) {
 		k := []byte("\x00\x00\x00\x00")
 		v := []byte("xyza")
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -153,7 +153,7 @@ func BenchmarkCacheGet(b *testing.B) {
 	defer c.Reset()
 	k := []byte("\x00\x00\x00\x00")
 	v := []byte("xyza")
-	for i := 0; i < items; i++ {
+	for range items {
 		k[0]++
 		if k[0] == 0 {
 			k[1]++
@@ -167,7 +167,7 @@ func BenchmarkCacheGet(b *testing.B) {
 		var buf []byte
 		k := []byte("\x00\x00\x00\x00")
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -186,7 +186,7 @@ func BenchmarkCacheHas(b *testing.B) {
 	c := New(12 * items)
 	defer c.Reset()
 	k := []byte("\x00\x00\x00\x00")
-	for i := 0; i < items; i++ {
+	for range items {
 		k[0]++
 		if k[0] == 0 {
 			k[1]++
@@ -199,7 +199,7 @@ func BenchmarkCacheHas(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		k := []byte("\x00\x00\x00\x00")
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -223,14 +223,14 @@ func BenchmarkCacheSetGet(b *testing.B) {
 		v := []byte("xyza")
 		var buf []byte
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
 				}
 				c.Set(k, v)
 			}
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -254,7 +254,7 @@ func BenchmarkStdMapSet(b *testing.B) {
 		k := []byte("\x00\x00\x00\x00")
 		v := []byte("xyza")
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -272,7 +272,7 @@ func BenchmarkStdMapGet(b *testing.B) {
 	m := make(map[string][]byte)
 	k := []byte("\x00\x00\x00\x00")
 	v := []byte("xyza")
-	for i := 0; i < items; i++ {
+	for range items {
 		k[0]++
 		if k[0] == 0 {
 			k[1]++
@@ -286,7 +286,7 @@ func BenchmarkStdMapGet(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		k := []byte("\x00\x00\x00\x00")
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -312,7 +312,7 @@ func BenchmarkStdMapSetGet(b *testing.B) {
 		k := []byte("\x00\x00\x00\x00")
 		v := []byte("xyza")
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -321,7 +321,7 @@ func BenchmarkStdMapSetGet(b *testing.B) {
 				m[string(k)] = v
 				mu.Unlock()
 			}
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -346,7 +346,7 @@ func BenchmarkSyncMapSet(b *testing.B) {
 		k := []byte("\x00\x00\x00\x00")
 		v := "xyza"
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -362,7 +362,7 @@ func BenchmarkSyncMapGet(b *testing.B) {
 	m := sync.Map{}
 	k := []byte("\x00\x00\x00\x00")
 	v := "xyza"
-	for i := 0; i < items; i++ {
+	for range items {
 		k[0]++
 		if k[0] == 0 {
 			k[1]++
@@ -375,7 +375,7 @@ func BenchmarkSyncMapGet(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		k := []byte("\x00\x00\x00\x00")
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
@@ -398,14 +398,14 @@ func BenchmarkSyncMapSetGet(b *testing.B) {
 		k := []byte("\x00\x00\x00\x00")
 		v := "xyza"
 		for pb.Next() {
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++
 				}
 				m.Store(string(k), v)
 			}
-			for i := 0; i < items; i++ {
+			for range items {
 				k[0]++
 				if k[0] == 0 {
 					k[1]++

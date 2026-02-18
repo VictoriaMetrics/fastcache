@@ -11,7 +11,7 @@ func TestSetGetBig(t *testing.T) {
 	const valuesCount = 10
 	for _, valueSize := range []int{1, 100, 1<<16 - 1, 1 << 16, 1<<16 + 1, 1 << 17, 1<<17 + 1, 1<<17 - 1, 1 << 19} {
 		t.Run(fmt.Sprintf("valueSize_%d", valueSize), func(t *testing.T) {
-			for seed := 0; seed < 3; seed++ {
+			for seed := range 3 {
 				testSetGetBig(t, c, valueSize, valuesCount, seed)
 			}
 		})
@@ -21,7 +21,7 @@ func TestSetGetBig(t *testing.T) {
 func testSetGetBig(t *testing.T, c *Cache, valueSize, valuesCount, seed int) {
 	m := make(map[string][]byte)
 	var buf []byte
-	for i := 0; i < valuesCount; i++ {
+	for i := range valuesCount {
 		key := []byte(fmt.Sprintf("key %d", i))
 		value := createValue(valueSize, seed)
 		c.SetBig(key, value)
@@ -51,7 +51,7 @@ func testSetGetBig(t *testing.T, c *Cache, valueSize, valuesCount, seed int) {
 
 func createValue(size, seed int) []byte {
 	var buf []byte
-	for i := 0; i < size; i++ {
+	for i := range size {
 		buf = append(buf, byte(i+seed))
 	}
 	return buf

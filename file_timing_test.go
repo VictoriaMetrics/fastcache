@@ -23,7 +23,7 @@ func benchmarkSaveToFile(b *testing.B, concurrency int) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	b.SetBytes(benchCacheSize)
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		if err := c.SaveToFileConcurrent(filePath, concurrency); err != nil {
 			b.Fatalf("unexpected error when saving to file: %s", err)
 		}
@@ -50,7 +50,7 @@ func benchmarkLoadFromFile(b *testing.B, concurrency int) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	b.SetBytes(benchCacheSize)
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		c, err := LoadFromFile(filePath)
 		if err != nil {
 			b.Fatalf("cannot load cache from file: %s", err)
@@ -72,7 +72,7 @@ func newBenchCache() *Cache {
 	benchCacheOnce.Do(func() {
 		c := New(benchCacheSize)
 		itemsCount := benchCacheSize / 20
-		for i := 0; i < itemsCount; i++ {
+		for i := range itemsCount {
 			k := []byte(fmt.Sprintf("key %d", i))
 			v := []byte(fmt.Sprintf("value %d", i))
 			c.Set(k, v)

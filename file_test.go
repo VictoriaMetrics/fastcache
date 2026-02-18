@@ -79,7 +79,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	const itemsCount = 10000
 	const maxBytes = bucketsCount * chunkSize * 2
 	c := New(maxBytes)
-	for i := 0; i < itemsCount; i++ {
+	for i := range itemsCount {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		c.Set(k, v)
@@ -114,7 +114,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	if s.EntriesCount != itemsCount {
 		t.Fatalf("unexpected entriesCount; got %d; want %d", s.EntriesCount, itemsCount)
 	}
-	for i := 0; i < itemsCount; i++ {
+	for i := range itemsCount {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		vv := c.Get(nil, k)
@@ -131,7 +131,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	if s.EntriesCount != itemsCount {
 		t.Fatalf("unexpected entriesCount; got %d; want %d", s.EntriesCount, itemsCount)
 	}
-	for i := 0; i < itemsCount; i++ {
+	for i := range itemsCount {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		vv := c.Get(nil, k)
@@ -142,7 +142,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	c.Reset()
 
 	// Overwrite existing keys
-	for i := 0; i < itemsCount; i++ {
+	for i := range itemsCount {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		c.Set(k, v)
@@ -153,7 +153,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	}
 
 	// Add new keys
-	for i := 0; i < itemsCount; i++ {
+	for i := range itemsCount {
 		k := []byte(fmt.Sprintf("new key %d", i))
 		v := []byte(fmt.Sprintf("new value %d", i))
 		c.Set(k, v)
@@ -164,7 +164,7 @@ func testSaveLoadFile(t *testing.T, concurrency int) {
 	}
 
 	// Verify all the keys exist
-	for i := 0; i < itemsCount; i++ {
+	for i := range itemsCount {
 		k := []byte(fmt.Sprintf("key %d", i))
 		v := []byte(fmt.Sprintf("value %d", i))
 		vv := c.Get(nil, k)
@@ -198,7 +198,7 @@ func TestSaveLoadConcurrent(t *testing.T) {
 
 	// Start concurrent workers that run Get and Set on c.
 	var wgWorkers sync.WaitGroup
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		wgWorkers.Add(1)
 		go func() {
 			defer wgWorkers.Done()
@@ -230,13 +230,13 @@ func TestSaveLoadConcurrent(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	var wgSavers sync.WaitGroup
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		wgSavers.Add(1)
 		filePath := filepath.Join(tmpDir, fmt.Sprintf("TestSaveLoadFile.%d.fastcache", i))
 		go func() {
 			defer wgSavers.Done()
 			defer os.RemoveAll(filePath)
-			for j := 0; j < 3; j++ {
+			for range 3 {
 				if err := c.SaveToFileConcurrent(filePath, 3); err != nil {
 					panic(fmt.Errorf("cannot save cache to %q: %s", filePath, err))
 				}

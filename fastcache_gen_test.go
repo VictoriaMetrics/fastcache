@@ -28,7 +28,7 @@ func TestGenerationOverflow(t *testing.T) {
 	}
 
 	// Do some initial Set/Get demonstrate that this works
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		c.Set(key1, bigVal1)
 		c.Set(key2, bigVal2)
 		getVal(t, c, key1, bigVal1)
@@ -76,7 +76,7 @@ func TestGenerationOverflow(t *testing.T) {
 	getVal(t, c, key2, bigVal2)
 
 	// Do it a few more times to show that this bucket is now unusable
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		c.Set(key1, bigVal1)
 		c.Set(key2, bigVal2)
 		getVal(t, c, key1, bigVal1)
