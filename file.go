@@ -112,13 +112,12 @@ func (c *Cache) save(dir string, workersCount int) error {
 
 	// Save buckets by workersCount concurrent workers.
 	workCh := make(chan int, workersCount)
-	results := make(chan error)
+	results := make(chan error, workersCount)
 	for i := range workersCount {
 		go func(workerNum int) {
 			results <- saveBuckets(c.buckets[:], workCh, dir, workerNum)
 		}(i)
 	}
-	// Feed workers with work
 	for i := range c.buckets[:] {
 		workCh <- i
 	}
