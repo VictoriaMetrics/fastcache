@@ -1,11 +1,13 @@
 package fastcache
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -258,4 +260,57 @@ func TestSaveLoadConcurrent(t *testing.T) {
 
 	close(stopCh)
 	wgWorkers.Wait()
+}
+
+func writeUint64ToBytes(v uint64) []byte {
+	var buf [8]byte
+	binary.LittleEndian.PutUint64(buf[:], v)
+	return buf[:]
+}
+
+func TestLoadCorruptedMetadataTooBigChunks(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	filePath := filepath.Join(tmpDir, "corrupted.fastcache")
+	if err := os.MkdirAll(filePath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	metadataPath := filepath.Join(filePath, "metadata.bin")
+	hugeChunks := maxBucketSize/chunkSize + 1
+	if err := os.WriteFile(metadataPath, writeUint64ToBytes(hugeChunks), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = LoadFromFile(filePath)
+	if err == nil {
+		t.Fatal("expected error for corrupted metadata with huge maxBucketChunks")
+	}
+	if !strings.Contains(err.Error(), "too big maxBucketChunks") {
+		t.Fatalf("unexpected error: %s", err)
+	}
+}
+
+func TestLoadCorruptedDataTooBigKvsLen(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	filePath := filepath.Join(tmpDir, "corrupted.fastcache")
+	c := New(bucketsCount * chunkSize * 2)
+	c.Set([]byte("key"), []byte("value"))
+	if err := c.SaveToFile(filePath); err != nil {
+		t.Fatalf("SaveToFile error: %s", err)
+	}
+
+	_, err = LoadFromFile(filePath)
+	if err != nil {
+		t.Fatalf("LoadFromFile must succeed for valid cache: %s", err)
+	}
 }
