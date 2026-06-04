@@ -8,12 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@0caeaed6fd66a828038c2da3c0f662a42862658f  # v1.1.3
         with:
           go-version: 1.24
         id: go
       - name: Code checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@af513c7a016048ae468971c52ed77d9562c7c819  # v1.0.0
       - name: Test
         run: |
           go test -v ./... -coverprofile=coverage.txt -covermode=atomic
@@ -26,7 +26,7 @@ jobs:
           GOOS=windows go build
           GOARCH=386 go build
       - name: Publish coverage
-        uses: codecov/codecov-action@v1.0.6
+        uses: codecov/codecov-action@e34ee485244a5b5e6e4e1b96daa4a15c9073e4fc  # v1.0.6
         with:
           token: ${{secrets.CODECOV_TOKEN}}
           file: ./coverage.txt
