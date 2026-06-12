@@ -13,7 +13,7 @@ jobs:
           go-version: 1.24
         id: go
       - name: Code checkout
-        uses: actions/checkout@af513c7a016048ae468971c52ed77d9562c7c819  # v1.0.0
+        uses: actions/checkout@722adc63f1aa60a57ec37892e133b1d319cae598  # v2.0.0
         with:
           persist-credentials: false
       - name: Test
