@@ -14,6 +14,8 @@ jobs:
         id: go
       - name: Code checkout
         uses: actions/checkout@af513c7a016048ae468971c52ed77d9562c7c819  # v1.0.0
+        with:
+          persist-credentials: false
       - name: Test
         run: |
           go test -v ./... -coverprofile=coverage.txt -covermode=atomic
