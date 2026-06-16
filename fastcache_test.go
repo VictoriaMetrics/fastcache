@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	xxhash "github.com/cespare/xxhash/v2"
 )
 
 func TestCacheSmall(t *testing.T) {
@@ -220,6 +222,38 @@ func testCacheGetSet(c *Cache, itemsCount int) error {
 		return fmt.Errorf("too many cache misses; got %d; want less than %d", misses, itemsCount/100)
 	}
 	return nil
+}
+
+func TestBucketGetNilChunkNoCorruptionPanic(t *testing.T) {
+	var b bucket
+	b.Init(64 * 1024)
+
+	k := []byte("testkey")
+	v := []byte("testvalue")
+	h := xxhash.Sum64(k)
+	b.Set(k, v, h)
+
+	got, found := b.Get(nil, k, h, true)
+	if !found || string(got) != "testvalue" {
+		t.Fatalf("expected to find key before corruption; found=%v val=%q", found, got)
+	}
+
+	b.mu.Lock()
+	mapVal := b.m[h]
+	chunkIdx := (mapVal & ((1 << bucketSizeBits) - 1)) / chunkSize
+	b.chunks[chunkIdx] = nil
+	b.mu.Unlock()
+
+	got, found = b.Get(nil, k, h, true)
+	if found {
+		t.Fatalf("expected miss for nil chunk, but got found=true val=%q", got)
+	}
+
+	var s Stats
+	b.UpdateStats(&s)
+	if s.Corruptions != 1 {
+		t.Fatalf("expected 1 corruption; got %d", s.Corruptions)
+	}
 }
 
 func TestCacheResetUpdateStatsSetConcurrent(t *testing.T) {

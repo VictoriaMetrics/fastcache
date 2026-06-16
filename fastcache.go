@@ -393,9 +393,12 @@ func (b *bucket) Get(dst, k []byte, h uint64, returnDst bool) ([]byte, bool) {
 				goto end
 			}
 			chunk := chunks[chunkIdx]
+			if chunk == nil {
+				atomic.AddUint64(&b.corruptions, 1)
+				goto end
+			}
 			idx %= chunkSize
 			if idx+4 >= chunkSize {
-				// Corrupted data during the load from file. Just skip it.
 				atomic.AddUint64(&b.corruptions, 1)
 				goto end
 			}
@@ -404,7 +407,6 @@ func (b *bucket) Get(dst, k []byte, h uint64, returnDst bool) ([]byte, bool) {
 			valLen := (uint64(kvLenBuf[2]) << 8) | uint64(kvLenBuf[3])
 			idx += 4
 			if idx+keyLen+valLen >= chunkSize {
-				// Corrupted data during the load from file. Just skip it.
 				atomic.AddUint64(&b.corruptions, 1)
 				goto end
 			}
