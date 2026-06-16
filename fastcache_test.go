@@ -1,6 +1,7 @@
 package fastcache
 
 import (
+	"bytes"
 	"fmt"
 	"runtime"
 	"sync"
@@ -65,6 +66,20 @@ func TestCacheSmall(t *testing.T) {
 	}
 	if c.Has([]byte("foobar")) {
 		t.Fatalf("non-existing entry found in the cache")
+	}
+
+	// Test loadOrSet
+	k = []byte("loadOrSet")
+	c.LoadOrSet(nil, k, nil)
+	if v := c.Get(nil, k); len(v) != 0 {
+		t.Fatalf("unexpected non-empty value obtained from empty entry: %q", v)
+	}
+	dst, found := c.LoadOrSet(nil, k, nil)
+	if !found {
+		t.Fatalf("unexpected loadOrSet found result: %v", found)
+	}
+	if bytes.Compare(dst, nil) < 0 {
+		t.Fatalf("unexpected loadOrSet dst result: %q", dst)
 	}
 }
 

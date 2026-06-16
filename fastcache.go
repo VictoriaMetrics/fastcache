@@ -151,6 +151,19 @@ func (c *Cache) Set(k, v []byte) {
 	c.buckets[idx].Set(k, v, h)
 }
 
+// LoadOrSet stores (k, v) in the cache after detecting if the key exist already.
+func (c *Cache) LoadOrSet(dst, k, v []byte) ([]byte, bool) {
+	h := xxhash.Sum64(k)
+	idx := h % bucketsCount
+	// try HasGet firstly to avoid rwLock
+	ret, found := c.HasGet(dst, k)
+	if found {
+		return ret, found
+	} else {
+		return c.buckets[idx].LoadOrSet(dst, k, v, h, true)
+	}
+}
+
 // Get appends value by the key k to dst and returns the result.
 //
 // Get allocates new byte slice for the returned value if dst is nil.
@@ -373,6 +386,123 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 		b.cleanLocked()
 	}
 	b.mu.Unlock()
+}
+
+func (b *bucket) LoadOrSet(dst, k, v []byte, h uint64, returnDst bool) ([]byte, bool) {
+	atomic.AddUint64(&b.setCalls, 1)
+	if len(k) >= (1<<16) || len(v) >= (1<<16) {
+		// Too big key or value - its length cannot be encoded
+		// with 2 bytes (see below). Skip the entry.
+		return nil, false
+	}
+	var kvLenBuf [4]byte
+	kvLenBuf[0] = byte(uint16(len(k)) >> 8)
+	kvLenBuf[1] = byte(len(k))
+	kvLenBuf[2] = byte(uint16(len(v)) >> 8)
+	kvLenBuf[3] = byte(len(v))
+	kvLen := uint64(len(kvLenBuf) + len(k) + len(v))
+	if kvLen >= chunkSize {
+		// Do not store too big keys and values, since they do not
+		// fit a chunk.
+		return nil, false
+	}
+
+	chunks := b.chunks
+	needClean := false
+	found := false
+	b.mu.Lock()
+
+	var (
+		idx         uint64
+		idxNew      uint64
+		chunkIdx    uint64
+		chunkIdxNew uint64
+		chunk       []byte
+	)
+	// Get firstly. If the key exist, then return.
+	tv := b.m[h]
+	bGen := b.gen & ((1 << genSizeBits) - 1)
+	if tv > 0 {
+		gen := tv >> bucketSizeBits
+		tidx := tv & ((1 << bucketSizeBits) - 1)
+		if gen == bGen && idx < b.idx || gen+1 == bGen && idx >= b.idx || gen == maxGen && bGen == 1 && idx >= b.idx {
+			tchunkIdx := idx / chunkSize
+			if tchunkIdx >= uint64(len(chunks)) {
+				// Corrupted data during the load from file. Just skip it.
+				atomic.AddUint64(&b.corruptions, 1)
+				goto end
+			}
+			tchunk := chunks[tchunkIdx]
+			tidx %= chunkSize
+			if tidx+4 >= chunkSize {
+				// Corrupted data during the load from file. Just skip it.
+				atomic.AddUint64(&b.corruptions, 1)
+				goto end
+			}
+			tkvLenBuf := tchunk[tidx : tidx+4]
+			keyLen := (uint64(tkvLenBuf[0]) << 8) | uint64(tkvLenBuf[1])
+			valLen := (uint64(tkvLenBuf[2]) << 8) | uint64(tkvLenBuf[3])
+			tidx += 4
+			if tidx+keyLen+valLen >= chunkSize {
+				// Corrupted data during the load from file. Just skip it.
+				atomic.AddUint64(&b.corruptions, 1)
+				goto end
+			}
+			if string(k) == string(tchunk[tidx:tidx+keyLen]) {
+				idx += keyLen
+				if returnDst {
+					dst = append(dst, tchunk[tidx:tidx+valLen]...)
+				}
+				found = true
+			} else {
+				atomic.AddUint64(&b.collisions, 1)
+			}
+		}
+	}
+
+	if found {
+		goto end
+	}
+
+	// if not found, then set the key/value
+	idx = b.idx
+	idxNew = idx + kvLen
+	chunkIdx = idx / chunkSize
+	chunkIdxNew = idxNew / chunkSize
+	if chunkIdxNew > chunkIdx {
+		if chunkIdxNew >= uint64(len(chunks)) {
+			idx = 0
+			idxNew = kvLen
+			chunkIdx = 0
+			b.gen++
+			if b.gen&((1<<genSizeBits)-1) == 0 {
+				b.gen++
+			}
+			needClean = true
+		} else {
+			idx = chunkIdxNew * chunkSize
+			idxNew = idx + kvLen
+			chunkIdx = chunkIdxNew
+		}
+		chunks[chunkIdx] = chunks[chunkIdx][:0]
+	}
+	chunk = chunks[chunkIdx]
+	if chunk == nil {
+		chunk = getChunk()
+		chunk = chunk[:0]
+	}
+	chunk = append(chunk, kvLenBuf[:]...)
+	chunk = append(chunk, k...)
+	chunk = append(chunk, v...)
+	chunks[chunkIdx] = chunk
+	b.m[h] = idx | (b.gen << bucketSizeBits)
+	b.idx = idxNew
+	if needClean {
+		b.cleanLocked()
+	}
+end:
+	b.mu.Unlock()
+	return dst, found
 }
 
 func (b *bucket) Get(dst, k []byte, h uint64, returnDst bool) ([]byte, bool) {
