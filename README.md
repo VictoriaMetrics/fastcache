@@ -31,18 +31,22 @@ GOMAXPROCS=4 go test github.com/VictoriaMetrics/fastcache -bench='Set|Get' -benc
 goos: linux
 goarch: amd64
 pkg: github.com/VictoriaMetrics/fastcache
-BenchmarkBigCacheSet-4      	    2000	  10566656 ns/op	   6.20 MB/s	 4660369 B/op	       6 allocs/op
-BenchmarkBigCacheGet-4      	    2000	   6902694 ns/op	   9.49 MB/s	  684169 B/op	  131076 allocs/op
-BenchmarkBigCacheSetGet-4   	    1000	  17579118 ns/op	   7.46 MB/s	 5046744 B/op	  131083 allocs/op
-BenchmarkCacheSet-4         	    5000	   3808874 ns/op	  17.21 MB/s	    1142 B/op	       2 allocs/op
-BenchmarkCacheGet-4         	    5000	   3293849 ns/op	  19.90 MB/s	    1140 B/op	       2 allocs/op
-BenchmarkCacheSetGet-4      	    2000	   8456061 ns/op	  15.50 MB/s	    2857 B/op	       5 allocs/op
-BenchmarkStdMapSet-4        	    2000	  10559382 ns/op	   6.21 MB/s	  268413 B/op	   65537 allocs/op
-BenchmarkStdMapGet-4        	    5000	   2687404 ns/op	  24.39 MB/s	    2558 B/op	      13 allocs/op
-BenchmarkStdMapSetGet-4     	     100	 154641257 ns/op	   0.85 MB/s	  387405 B/op	   65558 allocs/op
-BenchmarkSyncMapSet-4       	     500	  24703219 ns/op	   2.65 MB/s	 3426543 B/op	  262411 allocs/op
-BenchmarkSyncMapGet-4       	    5000	   2265892 ns/op	  28.92 MB/s	    2545 B/op	      79 allocs/op
-BenchmarkSyncMapSetGet-4    	    1000	  14595535 ns/op	   8.98 MB/s	 3417190 B/op	  262277 allocs/op
+
+BenchmarkBigCacheSet-4      	    2000	  10937855 ns/op	   5.99 MB/s	 4660369 B/op	       6 allocs/op
+BenchmarkBigCacheGet-4      	    2000	   6985426 ns/op	   9.38 MB/s	  684169 B/op	  131076 allocs/op
+BenchmarkBigCacheSetGet-4   	    1000	  17301294 ns/op	   7.58 MB/s	 5046746 B/op	  131083 allocs/op
+BenchmarkCacheSet-4         	    5000	   3975946 ns/op	  16.48 MB/s	    1142 B/op	       2 allocs/op
+BenchmarkCacheGet-4         	    5000	   3572679 ns/op	  18.34 MB/s	    1141 B/op	       2 allocs/op
+BenchmarkCacheSetGet-4      	    2000	   9337256 ns/op	  14.04 MB/s	    2856 B/op	       5 allocs/op
+BenchmarkStdMapSet-4        	    2000	  14684273 ns/op	   4.46 MB/s	  268423 B/op	   65537 allocs/op
+BenchmarkStdMapGet-4        	    5000	   2833647 ns/op	  23.13 MB/s	    2561 B/op	      13 allocs/op
+BenchmarkStdMapSetGet-4     	     100	 137417861 ns/op	   0.95 MB/s	  387356 B/op	   65558 allocs/op
+BenchmarkSyncMapSet-4       	    1000	  23300189 ns/op	   2.81 MB/s	 3417183 B/op	  262277 allocs/op
+BenchmarkSyncMapGet-4       	    5000	   2316508 ns/op	  28.29 MB/s	    2543 B/op	      79 allocs/op
+BenchmarkSyncMapSetGet-4    	    2000	  10444529 ns/op	  12.55 MB/s	 3412527 B/op	  262210 allocs/op
+BenchmarkSaveToFile-4       	      50	 259800249 ns/op	 129.15 MB/s	55739129 B/op	    3091 allocs/op
+BenchmarkLoadFromFile-4     	     100	 121189395 ns/op	 276.88 MB/s	98089036 B/op	    8748 allocs/op
+BenchmarkCache_VisitAllEntries-4   50000        245913 ns/op      40.66 MB/s         170 B/op          2 allocs/op
 ```
 
 `MB/s` column here actually means `millions of operations per second`.
