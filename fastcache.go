@@ -228,6 +228,13 @@ type bucket struct {
 	// m maps hash(k) to idx of (k, v) pair in chunks.
 	m map[uint64]uint64
 
+	// mPrev contains entries written during the previous gen.
+	mPrev map[uint64]uint64
+
+	// mPrevEntriesMask is a mask when a hash is present in both m and mPrev.
+	// Used to calculate EntriesCount without scanning.
+	mPrevEntriesMask int
+
 	// gen is the generation of chunks.
 	gen uint64
 
@@ -259,6 +266,8 @@ func (b *bucket) Reset() {
 		chunks[i] = nil
 	}
 	b.m = make(map[uint64]uint64)
+	b.mPrev = nil
+	b.mPrevEntriesMask = 0
 	b.idx = 0
 	b.gen = 1
 	atomic.StoreUint64(&b.getCalls, 0)
@@ -281,20 +290,42 @@ func (b *bucket) cleanLocked() {
 			newItems++
 		}
 	}
-	if newItems < len(bm) {
-		// Re-create b.m with valid items, which weren't expired yet instead of deleting expired items from b.m.
-		// This should reduce memory fragmentation and the number Go objects behind b.m.
-		// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/5379
-		bmNew := make(map[uint64]uint64, newItems)
-		for k, v := range bm {
-			gen := v >> bucketSizeBits
-			idx := v & ((1 << bucketSizeBits) - 1)
-			if (gen+1 == bGen || gen == maxGen && bGen == 1) && idx >= bIdx || gen == bGen && idx < bIdx {
-				bmNew[k] = v
-			}
-		}
-		b.m = bmNew
+	bmPrev := b.mPrev
+	if bmPrev == nil && newItems == len(bm) {
+		return
 	}
+	for k, v := range bmPrev {
+		if _, ok := bm[k]; ok {
+			continue
+		}
+		gen := v >> bucketSizeBits
+		idx := v & ((1 << bucketSizeBits) - 1)
+		if (gen+1 == bGen || gen == maxGen && bGen == 1) && idx >= bIdx || gen == bGen && idx < bIdx {
+			newItems++
+		}
+	}
+
+	bmNew := make(map[uint64]uint64, newItems)
+	for k, v := range bmPrev {
+		if _, ok := bm[k]; ok {
+			continue
+		}
+		gen := v >> bucketSizeBits
+		idx := v & ((1 << bucketSizeBits) - 1)
+		if (gen+1 == bGen || gen == maxGen && bGen == 1) && idx >= bIdx || gen == bGen && idx < bIdx {
+			bmNew[k] = v
+		}
+	}
+	for k, v := range bm {
+		gen := v >> bucketSizeBits
+		idx := v & ((1 << bucketSizeBits) - 1)
+		if (gen+1 == bGen || gen == maxGen && bGen == 1) && idx >= bIdx || gen == bGen && idx < bIdx {
+			bmNew[k] = v
+		}
+	}
+	b.m = bmNew
+	b.mPrev = nil
+	b.mPrevEntriesMask = 0
 }
 
 func (b *bucket) UpdateStats(s *Stats) {
@@ -305,7 +336,8 @@ func (b *bucket) UpdateStats(s *Stats) {
 	s.Corruptions += atomic.LoadUint64(&b.corruptions)
 
 	b.mu.RLock()
-	s.EntriesCount += uint64(len(b.m))
+	entriesCount := len(b.m) + len(b.mPrev) - b.mPrevEntriesMask
+	s.EntriesCount += uint64(entriesCount)
 	bytesSize := uint64(0)
 	for _, chunk := range b.chunks {
 		bytesSize += uint64(cap(chunk))
@@ -336,7 +368,6 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 
 	b.mu.Lock()
 	chunks := b.chunks
-	needClean := false
 	idx := b.idx
 	idxNew := idx + kvLen
 	chunkIdx := idx / chunkSize
@@ -350,7 +381,9 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 			if b.gen&((1<<genSizeBits)-1) == 0 {
 				b.gen++
 			}
-			needClean = true
+			b.mPrev = b.m
+			b.m = make(map[uint64]uint64)
+			b.mPrevEntriesMask = 0
 		} else {
 			idx = chunkIdxNew * chunkSize
 			idxNew = idx + kvLen
@@ -367,11 +400,14 @@ func (b *bucket) Set(k, v []byte, h uint64) {
 	chunk = append(chunk, k...)
 	chunk = append(chunk, v...)
 	chunks[chunkIdx] = chunk
+	if _, ok := b.mPrev[h]; ok {
+		if _, ok := b.m[h]; !ok {
+			// first time this hash is going to be in b.m
+			b.mPrevEntriesMask++
+		}
+	}
 	b.m[h] = idx | (b.gen << bucketSizeBits)
 	b.idx = idxNew
-	if needClean {
-		b.cleanLocked()
-	}
 	b.mu.Unlock()
 }
 
@@ -380,9 +416,12 @@ func (b *bucket) Get(dst, k []byte, h uint64, returnDst bool) ([]byte, bool) {
 	atomic.AddUint64(&b.getCalls, 1)
 	found := false
 	chunks := b.chunks
-	v := b.m[h]
+	v, ok := b.m[h]
+	if !ok {
+		v, ok = b.mPrev[h]
+	}
 	bGen := b.gen & ((1 << genSizeBits) - 1)
-	if v > 0 {
+	if ok && v > 0 {
 		gen := v >> bucketSizeBits
 		idx := v & ((1 << bucketSizeBits) - 1)
 		if gen == bGen && idx < b.idx || gen+1 == bGen && idx >= b.idx || gen == maxGen && bGen == 1 && idx >= b.idx {
@@ -429,6 +468,12 @@ end:
 
 func (b *bucket) Del(h uint64) {
 	b.mu.Lock()
+	_, cur := b.m[h]
+	_, prev := b.mPrev[h]
+	if cur && prev {
+		b.mPrevEntriesMask--
+	}
 	delete(b.m, h)
+	delete(b.mPrev, h)
 	b.mu.Unlock()
 }
