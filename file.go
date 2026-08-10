@@ -282,11 +282,18 @@ func loadBuckets(buckets []bucket, dataPath string, maxChunks uint64) error {
 }
 
 func (b *bucket) Save(w io.Writer) error {
-	b.mu.Lock()
-	b.cleanLocked()
-	b.mu.Unlock()
+	for {
+		b.mu.Lock()
+		b.cleanLocked()
+		b.mu.Unlock()
 
-	b.mu.RLock()
+		b.mu.RLock()
+		if b.mPrev != nil {
+			b.mu.RUnlock()
+			continue
+		}
+		break // b.mu is readlocked
+	}
 	defer b.mu.RUnlock()
 
 	// Store b.idx, b.gen and b.m to w.
@@ -407,6 +414,8 @@ func (b *bucket) Load(r io.Reader, maxChunks uint64) error {
 	}
 	b.chunks = chunks
 	b.m = m
+	b.mPrev = nil
+	b.mPrevEntriesMask = 0
 	b.idx = bIdx
 	b.gen = bGen
 	b.mu.Unlock()
